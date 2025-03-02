@@ -2,5 +2,5 @@
 
 public interface ILLMClient
 {
-    Task<string> GenerateTextAsync(string systemPrompt, string userPrompt)
+    Task<string> GenerateTextAsync(string systemPrompt, string userPrompt);
 }
