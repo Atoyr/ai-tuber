@@ -2,8 +2,9 @@ namespace Medoz.MultiLLMClient;
 
 public class LLMClientFactory
 {
-    public static ILLMClient CreateLLMClient()
+    public static ILLMClient CreateLLMClient<T>(string apiKey, string model)
+    where T : ILLMClient, new()
     {
-        throw new NotImplementedException();
+        return (T)Activator.CreateInstance(typeof(T), apiKey, model)!;
     }
 }

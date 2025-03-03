@@ -30,6 +30,10 @@ public class GeminiClient : ILLMClient
 
     public GeminiClient(string apiKey, string model = "gemini-1.5-pro")
     {
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            throw new ArgumentNullException(nameof(apiKey), "API key cannot be null or empty");
+        }
         _apiKey = apiKey;
         _model = model;
         _httpClient = new HttpClient();
