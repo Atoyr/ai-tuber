@@ -2,9 +2,18 @@ namespace Medoz.MultiLLMClient;
 
 public class LLMClientFactory
 {
-    public static ILLMClient CreateLLMClient<T>(string apiKey, string model)
-    where T : ILLMClient, new()
+    public static ILLMClient CreateClient(string clientType, string apiKey, string? model = null)
     {
-        return (T)Activator.CreateInstance(typeof(T), apiKey, model)!;
+        switch (clientType.ToLower())
+        {
+            case "gemini":
+                return model is null ? new GeminiClient(apiKey) : new GeminiClient(apiKey, model);
+            case "openai":
+                return model is null ? new OpenAIClient(apiKey) : new OpenAIClient(apiKey, model);
+            case "claude":
+                return model is null ? new ClaudeClient(apiKey) : new ClaudeClient(apiKey, model);
+            default:
+                throw new ArgumentException($"Invalid client type: {clientType}");
+        }
     }
 }
