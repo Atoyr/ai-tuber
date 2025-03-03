@@ -6,7 +6,7 @@ namespace Medoz.MultiLLMClient;
 public class GeminiClientSettings
 {
     public string ApiKey { get; init; }
-    public string DefaultModel { get; init; } = "gemini-1.5-pro";
+    public string DefaultModel { get; init; } = "gemini-2.0-flash-001";
 
     public GeminiClientSettings(string apiKey)
     {
@@ -116,6 +116,39 @@ public class GeminiClient : ILLMClient
         catch (Exception ex)
         {
             throw new Exception($"Unexpected error: {ex.Message}", ex);
+        }
+    }
+    public async Task<IEnumerable<string>> GetModelsAsync()
+    {
+        try
+        {
+            // Gemini APIにリクエスト送信
+            var response = await _httpClient.GetAsync(_apiEndpoint);
+            response.EnsureSuccessStatusCode();
+
+            // レスポンスの解析
+            var responseJson = await response.Content.ReadAsStringAsync();
+            using JsonDocument doc = JsonDocument.Parse(responseJson);
+
+            var models = new List<string>();
+            var modelsArray = doc.RootElement.GetProperty("models");
+
+            foreach (var model in modelsArray.EnumerateArray())
+            {
+                if (model.TryGetProperty("name", out var nameProperty) && nameProperty.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(nameProperty.GetString()))
+                {
+                    // 完全なモデル名からモデル名部分のみを抽出
+                    string fullName = nameProperty.GetString()!;
+                    string modelName = fullName.Substring(fullName.LastIndexOf('/') + 1);
+                    models.Add(modelName);
+                }
+            }
+
+            return models;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Failed to retrieve Gemini models: {ex.Message}", ex);
         }
     }
 }

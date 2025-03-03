@@ -10,7 +10,7 @@ public class ClaudeClient : ILLMClient
     private string _model { get; set; }
     private readonly string _apiEndpoint = "https://api.anthropic.com/v1/messages";
 
-    public ClaudeClient(string apiKey, string modelName = "claude-3-7-sonnet-20250219")
+    public ClaudeClient(string apiKey, string modelName = "claude-3-5-sonnet-20241022")
     {
         if(string.IsNullOrEmpty(apiKey))
         {
@@ -90,6 +90,37 @@ public class ClaudeClient : ILLMClient
         catch (Exception ex)
         {
             throw new Exception($"Unexpected error: {ex.Message}", ex);
+        }
+    }
+
+    public async Task<IEnumerable<string>> GetModelsAsync()
+    {
+        try
+        {
+            // Claude APIにリクエスト送信
+            var response = await _httpClient.GetAsync(_apiEndpoint);
+            response.EnsureSuccessStatusCode();
+
+            // レスポンスの解析
+            var responseJson = await response.Content.ReadAsStringAsync();
+            using JsonDocument doc = JsonDocument.Parse(responseJson);
+
+            var models = new List<string>();
+            var modelsArray = doc.RootElement.GetProperty("models");
+
+            foreach (var model in modelsArray.EnumerateArray())
+            {
+                if (model.TryGetProperty("name", out var nameProperty) && nameProperty.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(nameProperty.GetString()))
+                {
+                    models.Add(nameProperty.GetString()!);
+                }
+            }
+
+            return models;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Failed to retrieve Claude models: {ex.Message}", ex);
         }
     }
 }
