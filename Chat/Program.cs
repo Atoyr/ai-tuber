@@ -36,7 +36,8 @@ if (string.IsNullOrEmpty(apiKey))
 
 ILLMClient client = LLMClientFactory.CreateClient(clientType, apiKey);
 
-string systemPrompt = "あなたは優秀なアシスタントです。";
+Console.Write("システムプロンプトを入力してください: ");
+string systemPrompt = Console.ReadLine() ?? "";
 
 while (true)
 {
