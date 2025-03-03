@@ -3,23 +3,6 @@ using System.Text.Json;
 
 namespace Medoz.MultiLLMClient;
 
-public class GeminiClientSettings
-{
-    public string ApiKey { get; init; }
-    public string DefaultModel { get; init; } = "gemini-2.0-flash-001";
-
-    public GeminiClientSettings(string apiKey)
-    {
-        ApiKey = apiKey;
-    }
-
-    public GeminiClientSettings(string apiKey, string defaultModel)
-    {
-        ApiKey = apiKey;
-        DefaultModel = defaultModel;
-    }
-}
-
 public class GeminiClient : ILLMClient
 {
     private readonly string _apiKey;
