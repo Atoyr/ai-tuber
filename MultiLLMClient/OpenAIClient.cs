@@ -4,39 +4,28 @@ using OpenAI.Chat;
 
 namespace Medoz.MultiLLMClient;
 
-public class OpenAIClientSettings
-{
-    public string ApiKey { get; init; }
-    public string DefaultModel { get; init; } = "gpt-4o";
-
-    public OpenAIClientSettings(string apiKey)
-    {
-        ApiKey = apiKey;
-    }
-
-    public OpenAIClientSettings(string apiKey, string defaultModel)
-    {
-        ApiKey = apiKey;
-        DefaultModel = defaultModel;
-    }
-}
-
 public class OpenAIClient : ILLMClient
 {
-    private readonly OpenAIClientSettings _settings;
-
+    private readonly string _apiKey;
+    private string _model { get; set; }
     private ChatClient? _client;
 
-    public OpenAIClient(OpenAIClientSettings settings)
+    public OpenAIClient(string apiKey, string model = "gpt-4o")
     {
-        _settings = settings;
+        _apiKey = apiKey;
+        _model = model;
+    }
+
+    public void SetModel(string model)
+    {
+        _model = model;
     }
 
     public async Task<string> GenerateTextAsync(string systemPrompt, string userPrompt)
     {
         if (_client == null)
         {
-            _client = new ChatClient(model: _settings.DefaultModel, apiKey: _settings.ApiKey);
+            _client = new ChatClient(model: _model, apiKey: _apiKey);
         }
 
         var messages = new ChatMessage[]
