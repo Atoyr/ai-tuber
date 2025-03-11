@@ -29,6 +29,11 @@ public class XResponse
     public string? Content { get; set; }
 
     /// <summary>
+    /// エラーメッセージ（エラー発生時のみ設定）
+    /// </summary>
+    public string? ErrorMessage { get; set; }
+
+    /// <summary>
     /// Gets the deserialized content of the response
     /// </summary>
     /// <typeparam name="T">The type to deserialize to</typeparam>

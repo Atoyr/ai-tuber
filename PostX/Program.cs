@@ -26,6 +26,9 @@ class Program
             var accessToken = configuration["X_ACCESS_TOKEN"];
             var accessTokenSecret = configuration["X_ACCESS_TOKEN_SECRET"];
 
+            var clientId = configuration["X_CLIENT_ID"];
+            var clientSecret = configuration["X_CLIENT_SECRET"];
+
             // 認証情報が設定されているか確認
             if (string.IsNullOrEmpty(consumerKey) || string.IsNullOrEmpty(consumerSecret) ||
                 string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(accessTokenSecret))
@@ -37,7 +40,13 @@ class Program
             }
 
             // XClientをOAuth 1.0a認証情報で初期化
-            var xClient = new XClient(consumerKey, consumerSecret, accessToken, accessTokenSecret);
+            // var xClient = new XClient(consumerKey, consumerSecret, accessToken, accessTokenSecret);
+            var xClient = new XClient(clientId!, clientSecret!);
+            await xClient.AuthzAsync((url) =>
+            {
+                Console.WriteLine("以下のURLにアクセスして認証を行ってください:");
+                Console.WriteLine(url);
+            });
 
             // ユーザーにメッセージの入力を促す
             Console.WriteLine("Xに投稿するメッセージを入力してください (280文字以内):");
