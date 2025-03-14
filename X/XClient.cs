@@ -128,7 +128,6 @@ public class XClient
                     awaiter.OnCompleted(async () =>
                     {
                         var code = awaiter.GetResult();
-                        Console.WriteLine(code);
                         var token = await GetTokenAsync(code, _session);
                         _oAuth2AccessToken = token;
                     });

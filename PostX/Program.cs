@@ -42,7 +42,7 @@ class Program
             // XClientをOAuth 1.0a認証情報で初期化
             // var xClient = new XClient(consumerKey, consumerSecret, accessToken, accessTokenSecret);
             var xClient = new XClient(clientId!, clientSecret!);
-            await xClient.AuthzAsync((url) =>
+            var token = await xClient.AuthzAsync((url) =>
             {
                 Console.WriteLine("以下のURLにアクセスして認証を行ってください:");
                 Console.WriteLine(url);
