@@ -161,6 +161,10 @@ public class XClient
         return endpoint;
     }
 
+    private string GetResponseHtml(string title, string header,string message)
+    {
+        return $"<html><head><title>{title}</title></head><body><h1>{header}</h1><p>{message}</p></body></html>";
+    }
 
     /// <summary>
     /// ローカルHTTPサーバーを起動して認可コードを待ち受ける
@@ -195,10 +199,10 @@ public class XClient
                         Console.WriteLine($"Authorization Code: {authorizationCode}");
 
                         // ブラウザに成功メッセージを返す
-                        string responseString = "<html><head><title>認証成功</title></head><body><h1>認証が成功しました</h1><p>このウィンドウを閉じて、アプリケーションに戻ってください。</p></body></html>";
+                        string responseString = GetResponseHtml("認証成功", "認証が成功しました", "このウィンドウを閉じて、アプリケーションに戻ってください。");
                         byte[] buffer = Encoding.UTF8.GetBytes(responseString);
 
-                        response.ContentType = "text/html";
+                        response.ContentType = "text/html; charset=utf-8";
                         response.ContentLength64 = buffer.Length;
                         response.StatusCode = 200;
 
@@ -215,10 +219,11 @@ public class XClient
                         string errorDescription = request.QueryString.Get("error_description") ?? "詳細情報なし";
 
                         // ブラウザにエラーメッセージを返す
-                        string responseString = $"<html><head><title>認証エラー</title></head><body><h1>認証エラーが発生しました</h1><p>エラー: {error}</p><p>説明: {errorDescription}</p></body></html>";
+                        string responseString = GetResponseHtml("認証エラー", "認証エラーが発生しました", $"エラー: {error}<br>説明: {errorDescription}");
+
                         byte[] buffer = Encoding.UTF8.GetBytes(responseString);
 
-                        response.ContentType = "text/html";
+                        response.ContentType = "text/html; charset=utf-8";
                         response.ContentLength64 = buffer.Length;
                         response.StatusCode = 400;
 
