@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Net;
 using System.Runtime.CompilerServices;
+using Microsoft.VisualBasic;
 
 namespace Medoz.X;
 
@@ -25,6 +26,8 @@ public class XClient
 
     private string _tokenEndpoint => $"{_baseUrl}/oauth2/token";
     private string _postTweetEndpoint => $"{_baseUrl}/tweets";
+
+    private string _getMeEndpoint => $"{_baseUrl}/users/me";
 
     private readonly uint _tweetLength = 280;
 
@@ -289,35 +292,60 @@ public class XClient
         return token;
     }
 
-    public async Task<XResponse> PostTweetAsync(string text)
+    private HttpRequestMessage GenerateHttpRequest(string endpoint)
     {
-        if(OAuth2AccessToken is null)
+        if (OAuth2AccessToken is null)
         {
             throw new Exception("Access token is not set");
         }
 
-        if(string.IsNullOrWhiteSpace(text))
-        {
-            throw new ArgumentException("Message is empty", nameof(text));
-        }
+        var header = new AuthenticationHeaderValue("Bearer", OAuth2AccessToken.AccessToken);
+        var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        request.Headers.Authorization = header;
 
+        return request;
+    }
+
+    private XResponse<T> CreateError<T>(ErrorResponse? error)
+    {
+        if (error is null)
+        {
+            return new XResponse<T>(500, default, "Unknown error", "An unknown error occurred");
+        }
+        var status = error.Status is null ? 500 : int.Parse(error.Status);
+        return new XResponse<T>(status, default, error!.Title, error!.Detail);
+    }
+
+    private XResponse<T> CreateResponse<T>(int statusCode, T? content)
+    {
+        if (content is null)
+        {
+            return new XResponse<T>(500, default, "Unknown error", "An unknown error occurred");
+        }
+        return new XResponse<T>(statusCode, content);
+    }
+
+    /// <summary>
+    /// Posts a tweet to the authenticated user's timeline
+    /// </summary>
+    /// <param name="text"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
+    public async Task<XResponse<PostTweetResponse>> PostTweetAsync(string text)
+    {
         if (!string.IsNullOrEmpty(text) && text.Length > _tweetLength)
         {
             throw new ArgumentException($"Tweet text cannot exceed {_tweetLength} characters", nameof(text));
         }
 
-        var header = new AuthenticationHeaderValue("Bearer", OAuth2AccessToken.AccessToken);
-
+        var request = GenerateHttpRequest(_postTweetEndpoint);
         var payload = new Dictionary<string, string>
         {
             { "text", text }
         };
-
         var jsonContent = JsonSerializer.Serialize(payload);
         var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-        var request = new HttpRequestMessage(HttpMethod.Post, _postTweetEndpoint);
-        request.Headers.Authorization = header;
         request.Content = content;
 
         var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
@@ -325,21 +353,33 @@ public class XClient
 
         if (!response.IsSuccessStatusCode)
         {
-            return new XResponse
-            {
-                IsSuccess = false,
-                StatusCode = (int)response.StatusCode,
-                ErrorMessage = $"Failed to post tweet: {responseContent}"
-            };
+            return CreateError<PostTweetResponse>(JsonSerializer.Deserialize<ErrorResponse>(responseContent));
         }
 
-        return new XResponse
-        {
-            IsSuccess = true,
-            StatusCode = (int)response.StatusCode,
-            Content = responseContent
-        };
+        return CreateResponse(
+            (int)response.StatusCode,
+            JsonSerializer.Deserialize<PostTweetResponse>(responseContent));
     }
 
-/// https://github.com/senk8/go-twitter-oauth/blob/master/main.go
+    /// <summary>
+    /// Gets the authenticated user's profile information
+    /// </summary>
+    /// <returns></returns>
+    public async Task<XResponse<GetMeResponse>> GetMeAsync()
+    {
+        var request = GenerateHttpRequest(_postTweetEndpoint);
+
+        var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+        var responseContent = await response.Content.ReadAsStringAsync();
+
+        // TODO: Deserialize response content
+        if (!response.IsSuccessStatusCode)
+        {
+            return CreateError<GetMeResponse>(JsonSerializer.Deserialize<ErrorResponse>(responseContent));
+        }
+
+        return CreateResponse(
+            (int)response.StatusCode,
+            JsonSerializer.Deserialize<GetMeResponse>(responseContent));
+    }
 }

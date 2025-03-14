@@ -11,7 +11,7 @@ namespace Medoz.X;
 /// <summary>
 /// Represents a response from the X API
 /// </summary>
-public class XResponse
+public class PostTweetResponse
 {
     /// <summary>
     /// Indicates whether the request was successful
