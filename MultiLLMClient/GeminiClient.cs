@@ -11,7 +11,7 @@ public class GeminiClient : ILLMClient
     private readonly HttpClient _httpClient;
     private string _apiEndpoint => $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
 
-    public GeminiClient(string apiKey, string model = "gemini-1.5-pro")
+    public GeminiClient(string apiKey, string model = "gemini-2.5-flash")
     {
         if (string.IsNullOrEmpty(apiKey))
         {

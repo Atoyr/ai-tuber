@@ -10,7 +10,7 @@ public class ClaudeClient : ILLMClient
     private string _model { get; set; }
     private readonly string _apiEndpoint = "https://api.anthropic.com/v1/messages";
 
-    public ClaudeClient(string apiKey, string modelName = "claude-3-5-sonnet-20241022")
+    public ClaudeClient(string apiKey, string modelName = "claude-sonnet-4-6")
     {
         if(string.IsNullOrEmpty(apiKey))
         {

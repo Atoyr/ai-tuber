@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MultiLLMClient\Medoz.MultiLLMClient.csproj" />
+    <ProjectReference Include="..\Voicevox\Medoz.Voicevox.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -5,10 +5,10 @@
 
 ## Phase A: VOICEVOX 発話 (READMEのTODO最優先)
 
-- [ ] `Voicevox/` プロジェクト作成 (`Medoz.Voicevox`, classlib, net8.0)
-- [ ] `VoicevoxClient` — `/audio_query` → `/synthesis` で wav バイト列を返す
-- [ ] `AudioPlayer` (NAudio) — デバイス名部分一致で出力先選択、wav再生。見つからない場合は候補一覧付きの例外
-- [ ] `Chat` に発話オプションを追加し、Claude応答 → VOICEVOX → VB-CABLE の最小パイプラインを確認
+- [x] `Voicevox/` プロジェクト作成 (`Medoz.Voicevox`, classlib, net8.0)
+- [x] `VoicevoxClient` — `/audio_query` → `/synthesis` で wav バイト列を返す
+- [x] `AudioPlayer` (NAudio) — デバイス名部分一致で出力先選択、wav再生。見つからない場合は候補一覧付きの例外
+- [x] `Chat` に発話オプションを追加し、Claude応答 → VOICEVOX → VB-CABLE の最小パイプラインを確認
 - 完了条件: Windows で `dotnet run --project Chat` から PuruPuruPNGTuber が口パクする
 
 ## Phase B: MultiLLMClient 拡張
@@ -17,7 +17,7 @@
 - [ ] `ClaudeClient` に履歴対応 `GenerateAsync` 実装
 - [ ] `ClaudeClient` に Vision (`GenerateWithImageAsync`) 実装
 - [ ] `ClaudeClient` に SSE streaming (`GenerateStreamAsync`) 実装
-- [ ] デフォルトモデルを `claude-sonnet-4-6` に更新
+- [x] デフォルトモデルを `claude-sonnet-4-6` に更新
 - [ ] ユニットテスト(リクエストJSON組み立てとレスポンスパース)
 
 ## Phase C: AiTuber.Core
