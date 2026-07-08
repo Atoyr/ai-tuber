@@ -2,6 +2,8 @@ using System;
 using System.Text.Json;
 using System.Net.Http.Headers;
 using OpenAI.Chat;
+// Medoz.MultiLLMClient.ChatMessage (IChatClient.cs) との名前衝突を回避する
+using OpenAIChatMessage = OpenAI.Chat.ChatMessage;
 
 
 namespace Medoz.MultiLLMClient;
@@ -35,10 +37,10 @@ public class OpenAIClient : ILLMClient
             _client = new ChatClient(model: _model, apiKey: _apiKey);
         }
 
-        var messages = new ChatMessage[]
+        var messages = new OpenAIChatMessage[]
         {
-            ChatMessage.CreateSystemMessage(systemPrompt),
-            ChatMessage.CreateUserMessage(userPrompt)
+            OpenAIChatMessage.CreateSystemMessage(systemPrompt),
+            OpenAIChatMessage.CreateUserMessage(userPrompt)
         };
 
         var response = await _client.CompleteChatAsync(messages);

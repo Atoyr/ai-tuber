@@ -1,9 +1,10 @@
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 
 namespace Medoz.MultiLLMClient;
 
-public class ClaudeClient : ILLMClient
+public class ClaudeClient : ILLMClient, IChatClient
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
@@ -11,6 +12,12 @@ public class ClaudeClient : ILLMClient
     private readonly string _apiEndpoint = "https://api.anthropic.com/v1/messages";
 
     public ClaudeClient(string apiKey, string modelName = "claude-sonnet-4-6")
+        : this(apiKey, modelName, new HttpClient())
+    {
+    }
+
+    // テストから HttpClient (モックハンドラ) を注入するためのコンストラクタ
+    public ClaudeClient(string apiKey, string modelName, HttpClient httpClient)
     {
         if(string.IsNullOrEmpty(apiKey))
         {
@@ -18,7 +25,7 @@ public class ClaudeClient : ILLMClient
         }
         _apiKey = apiKey;
         _model = modelName;
-        _httpClient = new HttpClient();
+        _httpClient = httpClient;
         _httpClient.DefaultRequestHeaders.Add("x-api-key", _apiKey);
         _httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
     }
@@ -91,6 +98,162 @@ public class ClaudeClient : ILLMClient
         {
             throw new Exception($"Unexpected error: {ex.Message}", ex);
         }
+    }
+
+    public async Task<string> GenerateAsync(string system, IReadOnlyList<ChatMessage> messages,
+                                            int maxTokens = 300, CancellationToken ct = default)
+    {
+        if (messages is null || messages.Count == 0)
+            throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
+
+        var messageObjects = messages.Select(m => (object)new { role = m.Role, content = m.Content }).ToArray();
+        string jsonContent = BuildRequestJson(system, messageObjects, maxTokens, stream: false);
+
+        return await SendAndParseTextAsync(jsonContent, ct);
+    }
+
+    public async Task<string> GenerateWithImageAsync(string system, ImageContent image, string text,
+                                                     int maxTokens = 150, CancellationToken ct = default)
+    {
+        if (image is null)
+            throw new ArgumentNullException(nameof(image));
+
+        var messageObjects = new object[]
+        {
+            new
+            {
+                role = "user",
+                content = new object[]
+                {
+                    new
+                    {
+                        type = "image",
+                        source = new { type = "base64", media_type = image.MediaType, data = image.Base64Data }
+                    },
+                    new { type = "text", text }
+                }
+            }
+        };
+        string jsonContent = BuildRequestJson(system, messageObjects, maxTokens, stream: false);
+
+        return await SendAndParseTextAsync(jsonContent, ct);
+    }
+
+    public async IAsyncEnumerable<string> GenerateStreamAsync(string system, IReadOnlyList<ChatMessage> messages,
+                                                              int maxTokens = 300,
+                                                              [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        if (messages is null || messages.Count == 0)
+            throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
+
+        var messageObjects = messages.Select(m => (object)new { role = m.Role, content = m.Content }).ToArray();
+        string jsonContent = BuildRequestJson(system, messageObjects, maxTokens, stream: true);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, _apiEndpoint)
+        {
+            Content = new StringContent(jsonContent, Encoding.UTF8, "application/json")
+        };
+
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+
+        using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
+
+        // SSE: "event: xxx" 行と "data: {json}" 行が交互に流れてくる
+        while (!reader.EndOfStream)
+        {
+            ct.ThrowIfCancellationRequested();
+            string? line = await reader.ReadLineAsync(ct);
+            if (line is null || !line.StartsWith("data: "))
+            {
+                continue;
+            }
+
+            string data = line["data: ".Length..];
+            string? text = null;
+            bool stop = false;
+            using (JsonDocument doc = JsonDocument.Parse(data))
+            {
+                var root = doc.RootElement;
+                string? eventType = root.TryGetProperty("type", out var typeProp) ? typeProp.GetString() : null;
+                if (eventType == "content_block_delta" &&
+                    root.TryGetProperty("delta", out var delta) &&
+                    delta.TryGetProperty("type", out var deltaType) &&
+                    deltaType.GetString() == "text_delta" &&
+                    delta.TryGetProperty("text", out var textProp))
+                {
+                    text = textProp.GetString();
+                }
+                else if (eventType == "message_stop")
+                {
+                    stop = true;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(text))
+            {
+                yield return text;
+            }
+            if (stop)
+            {
+                yield break;
+            }
+        }
+    }
+
+    private string BuildRequestJson(string system, object[] messages, int maxTokens, bool stream)
+    {
+        var requestObject = new Dictionary<string, object?>
+        {
+            ["model"] = _model,
+            ["messages"] = messages,
+            ["system"] = system,
+            ["max_tokens"] = maxTokens,
+        };
+        if (stream)
+        {
+            requestObject["stream"] = true;
+        }
+        return JsonSerializer.Serialize(requestObject);
+    }
+
+    private async Task<string> SendAndParseTextAsync(string jsonContent, CancellationToken ct)
+    {
+        var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+        try
+        {
+            var response = await _httpClient.PostAsync(_apiEndpoint, content, ct);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            using JsonDocument doc = JsonDocument.Parse(responseJson);
+            return ExtractText(doc.RootElement);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new Exception($"API request failed: {ex.Message}", ex);
+        }
+        catch (JsonException ex)
+        {
+            throw new Exception($"Failed to parse API response: {ex.Message}", ex);
+        }
+    }
+
+    private static string ExtractText(JsonElement root)
+    {
+        var builder = new StringBuilder();
+        foreach (var part in root.GetProperty("content").EnumerateArray())
+        {
+            if (part.TryGetProperty("type", out var typeProperty) &&
+                typeProperty.GetString() == "text" &&
+                part.TryGetProperty("text", out var textProperty))
+            {
+                builder.Append(textProperty.GetString());
+            }
+        }
+        return builder.ToString();
     }
 
     public async Task<IEnumerable<string>> GetModelsAsync()

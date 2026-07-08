@@ -13,12 +13,12 @@
 
 ## Phase B: MultiLLMClient 拡張
 
-- [ ] `ChatMessage` / `IChatClient` 追加(architecture.md のシグネチャ参照。既存 `ILLMClient` は壊さない)
-- [ ] `ClaudeClient` に履歴対応 `GenerateAsync` 実装
-- [ ] `ClaudeClient` に Vision (`GenerateWithImageAsync`) 実装
-- [ ] `ClaudeClient` に SSE streaming (`GenerateStreamAsync`) 実装
+- [x] `ChatMessage` / `IChatClient` 追加(architecture.md のシグネチャ参照。既存 `ILLMClient` は壊さない)
+- [x] `ClaudeClient` に履歴対応 `GenerateAsync` 実装
+- [x] `ClaudeClient` に Vision (`GenerateWithImageAsync`) 実装
+- [x] `ClaudeClient` に SSE streaming (`GenerateStreamAsync`) 実装
 - [x] デフォルトモデルを `claude-sonnet-4-6` に更新
-- [ ] ユニットテスト(リクエストJSON組み立てとレスポンスパース)
+- [x] ユニットテスト(リクエストJSON組み立てとレスポンスパース)
 
 ## Phase C: AiTuber.Core
 
