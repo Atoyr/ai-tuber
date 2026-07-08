@@ -22,11 +22,11 @@
 
 ## Phase C: AiTuber.Core
 
-- [ ] `Persona` — `prompts/character.md` + モード別mdを結合、`IChatClient` をラップ
-- [ ] `SharedMemory` — `data/memory.json` の load/save/AddStreamNote/AddTweet
-- [ ] `ModerationFilter` — 禁止ワード判定(設定から読み込み)
-- [ ] `AppConfig` — 環境変数と定数の集約(Python版 config.py 相当)
-- [ ] ユニットテスト
+- [x] `Persona` — `prompts/character.md` + モード別mdを結合、`IChatClient` をラップ
+- [x] `SharedMemory` — `data/memory.json` の load/save/AddStreamNote/AddTweet
+- [x] `ModerationFilter` — 禁止ワード判定(設定から読み込み)
+- [x] `AppConfig` — 環境変数と定数の集約(Python版 config.py 相当)
+- [x] ユニットテスト
 
 ## Phase D: Live(配信本体)
 
