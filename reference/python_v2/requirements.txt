@@ -1,0 +1,9 @@
+anthropic
+requests
+sounddevice
+soundfile
+pytchat
+tweepy
+pygetwindow
+mss
+Pillow
