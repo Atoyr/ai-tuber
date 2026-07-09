@@ -4,15 +4,36 @@ using Medoz.MultiLLMClient;
 using Medoz.Voicevox;
 
 // AITuber 配信本体 (Python版 live_aituber.py 相当)
-// コメント取得 → Claude(人格)応答 → フィルタ → VOICEVOX → VB-CABLE → PuruPuruPNGTuber口パク
+// コメント取得 → LLM(人格)応答 → フィルタ → VOICEVOX → VB-CABLE → PuruPuruPNGTuber口パク
 //
 // 実行 (ローカルテスト):
 //   dotnet run --project Live -- --console
+//   dotnet run --project Live -- --console --provider gemini
 
 bool consoleMode = args.Contains("--console");
 string[] positional = args.Where(a => !a.StartsWith("--")).ToArray();
 
 var config = AppConfig.LoadFromEnvironment();
+
+// --provider <claude|gemini|openai> で環境変数 LLM_PROVIDER を上書きできる
+int providerIndex = Array.IndexOf(args, "--provider");
+if (providerIndex >= 0)
+{
+    if (providerIndex + 1 >= args.Length)
+    {
+        Console.WriteLine("--provider には claude / gemini / openai のいずれかを指定してください。");
+        return 1;
+    }
+    config = config with { LlmProvider = args[providerIndex + 1] };
+    positional = positional.Where(a => a != args[providerIndex + 1]).ToArray();
+}
+
+if (!new[] { "claude", "gemini", "openai" }.Contains(config.LlmProvider.ToLower()))
+{
+    Console.WriteLine($"未知の LLM プロバイダです: {config.LlmProvider} (claude / gemini / openai のいずれかを指定してください)");
+    return 1;
+}
+
 string videoId = positional.Length > 0 ? positional[0] : config.YouTubeVideoId;
 
 if (!consoleMode && string.IsNullOrEmpty(videoId))
@@ -26,16 +47,17 @@ if (!consoleMode)
     return 1;
 }
 
-if (string.IsNullOrEmpty(config.AnthropicApiKey))
+if (string.IsNullOrEmpty(config.LlmApiKey))
 {
-    Console.WriteLine("環境変数 ANTHROPIC_API_KEY が未設定です");
+    Console.WriteLine($"環境変数 {config.LlmApiKeyEnvName} が未設定です (LLM_PROVIDER={config.LlmProvider})");
     return 1;
 }
 
 // キャラの表示名はコンソールログ用ラベル (人格そのものは prompts/character.md が唯一の真実)
 string displayName = Environment.GetEnvironmentVariable("CHARACTER_NAME") is { Length: > 0 } name ? name : "ぷる乃";
 
-IChatClient chatClient = new ClaudeClient(config.AnthropicApiKey, config.ClaudeModel);
+IChatClient chatClient = LLMClientFactory.CreateChatClient(config.LlmProvider, config.LlmApiKey, config.LlmModel);
+Console.WriteLine($"LLM: {config.LlmProvider} ({config.LlmModel})");
 var persona = new Persona(chatClient, config.PromptDir, "live_system.md");
 var filter = new ModerationFilter(config.BannedWords);
 var memory = new SharedMemory(config.MemoryPath, config.RecentTweetsKeep);

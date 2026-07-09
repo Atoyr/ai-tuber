@@ -4,16 +4,51 @@ namespace Medoz.AiTuber.Core;
 /// 環境変数と定数の集約 (Python版 config.py 相当)。
 /// 定数値は docs/architecture.md の「動作仕様」表と reference/python_v2/config.py に合わせる。
 /// </summary>
-public class AppConfig
+public record AppConfig
 {
     // --- ディレクトリ ---
     public string PromptDir { get; init; } = "prompts";
     public string DataDir { get; init; } = "data";
     public string MemoryPath => Path.Combine(DataDir, "memory.json");
 
-    // --- Claude ---
+    // --- LLM ---
+    /// <summary>使用する LLM プロバイダ ("claude" | "gemini" | "openai")</summary>
+    public string LlmProvider { get; init; } = "claude";
+
     public string AnthropicApiKey { get; init; } = "";
     public string ClaudeModel { get; init; } = "claude-sonnet-4-6";
+
+    public string GeminiApiKey { get; init; } = "";
+    public string GeminiModel { get; init; } = "gemini-2.5-flash";
+
+    public string OpenAIApiKey { get; init; } = "";
+    public string OpenAIModel { get; init; } = "gpt-4o";
+
+    /// <summary>選択中のプロバイダの API キー</summary>
+    public string LlmApiKey => LlmProvider.ToLower() switch
+    {
+        "gemini" => GeminiApiKey,
+        "openai" => OpenAIApiKey,
+        "claude" => AnthropicApiKey,
+        _ => throw new InvalidOperationException($"未知の LLM プロバイダです: {LlmProvider}"),
+    };
+
+    /// <summary>選択中のプロバイダのモデル名</summary>
+    public string LlmModel => LlmProvider.ToLower() switch
+    {
+        "gemini" => GeminiModel,
+        "openai" => OpenAIModel,
+        "claude" => ClaudeModel,
+        _ => throw new InvalidOperationException($"未知の LLM プロバイダです: {LlmProvider}"),
+    };
+
+    /// <summary>API キーが未設定のときに表示する環境変数名</summary>
+    public string LlmApiKeyEnvName => LlmProvider.ToLower() switch
+    {
+        "gemini" => "GEMINI_API_KEY",
+        "openai" => "OPENAI_API_KEY",
+        _ => "ANTHROPIC_API_KEY",
+    };
 
     // --- VOICEVOX / 音声 ---
     public string VoicevoxUrl { get; init; } = "http://127.0.0.1:50021";
@@ -53,7 +88,13 @@ public class AppConfig
     {
         return new AppConfig
         {
+            LlmProvider = Env("LLM_PROVIDER", "claude"),
             AnthropicApiKey = Env("ANTHROPIC_API_KEY", ""),
+            ClaudeModel = Env("CLAUDE_MODEL", "claude-sonnet-4-6"),
+            GeminiApiKey = Env("GEMINI_API_KEY", ""),
+            GeminiModel = Env("GEMINI_MODEL", "gemini-2.5-flash"),
+            OpenAIApiKey = Env("OPENAI_API_KEY", ""),
+            OpenAIModel = Env("OPENAI_MODEL", "gpt-4o"),
             VoicevoxUrl = Env("VOICEVOX_URL", "http://127.0.0.1:50021"),
             SpeakerId = EnvInt("VOICEVOX_SPEAKER_ID", 3),
             OutputDeviceName = Env("VOICEVOX_OUTPUT_DEVICE", "CABLE Input"),

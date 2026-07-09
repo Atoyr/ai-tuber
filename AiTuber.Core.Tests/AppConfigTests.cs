@@ -53,6 +53,75 @@ public class AppConfigTests
     }
 
     [Fact]
+    public void LlmProvider_DefaultsToClaude()
+    {
+        var config = new AppConfig();
+
+        Assert.Equal("claude", config.LlmProvider);
+        Assert.Equal("claude-sonnet-4-6", config.LlmModel);
+        Assert.Equal("ANTHROPIC_API_KEY", config.LlmApiKeyEnvName);
+    }
+
+    [Theory]
+    [InlineData("claude", "anthropic-key", "claude-sonnet-4-6", "ANTHROPIC_API_KEY")]
+    [InlineData("gemini", "gemini-key", "gemini-2.5-flash", "GEMINI_API_KEY")]
+    [InlineData("openai", "openai-key", "gpt-4o", "OPENAI_API_KEY")]
+    public void LlmApiKeyAndModel_ResolveByProvider(
+        string provider, string expectedKey, string expectedModel, string expectedEnvName)
+    {
+        var config = new AppConfig
+        {
+            LlmProvider = provider,
+            AnthropicApiKey = "anthropic-key",
+            GeminiApiKey = "gemini-key",
+            OpenAIApiKey = "openai-key",
+        };
+
+        Assert.Equal(expectedKey, config.LlmApiKey);
+        Assert.Equal(expectedModel, config.LlmModel);
+        Assert.Equal(expectedEnvName, config.LlmApiKeyEnvName);
+    }
+
+    [Fact]
+    public void LlmApiKey_IsCaseInsensitive()
+    {
+        var config = new AppConfig { LlmProvider = "Gemini", GeminiApiKey = "gemini-key" };
+
+        Assert.Equal("gemini-key", config.LlmApiKey);
+    }
+
+    [Fact]
+    public void LlmApiKey_Throws_ForUnknownProvider()
+    {
+        var config = new AppConfig { LlmProvider = "llama" };
+
+        Assert.Throws<InvalidOperationException>(() => config.LlmApiKey);
+    }
+
+    [Fact]
+    public void LoadFromEnvironment_ReadsProviderAndPerProviderKeys()
+    {
+        try
+        {
+            Environment.SetEnvironmentVariable("LLM_PROVIDER", "gemini");
+            Environment.SetEnvironmentVariable("GEMINI_API_KEY", "g-key");
+            Environment.SetEnvironmentVariable("GEMINI_MODEL", "gemini-2.5-pro");
+
+            var config = AppConfig.LoadFromEnvironment();
+
+            Assert.Equal("gemini", config.LlmProvider);
+            Assert.Equal("g-key", config.LlmApiKey);
+            Assert.Equal("gemini-2.5-pro", config.LlmModel);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LLM_PROVIDER", null);
+            Environment.SetEnvironmentVariable("GEMINI_API_KEY", null);
+            Environment.SetEnvironmentVariable("GEMINI_MODEL", null);
+        }
+    }
+
+    [Fact]
     public void LoadFromEnvironment_UsesDryRunDefault_WhenEnvNotSet()
     {
         Environment.SetEnvironmentVariable("TWEET_DRY_RUN", null);

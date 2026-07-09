@@ -8,7 +8,7 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
 
 ### 1. AIキャラクターとのおしゃべり(実装済み)
 
-`prompts/character.md` に書かれた人格を読み込み、Claude が視聴者コメントに応答します。
+`prompts/character.md` に書かれた人格を読み込み、LLM が視聴者コメントに応答します。
 応答は VOICEVOX で音声合成され、VB-CABLE 経由で PuruPuruPNGTuber に渡ることで
 アバターが口パクします。
 
@@ -16,6 +16,7 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
 コメント → Claude(人格) → VOICEVOX(音声合成) → VB-CABLE → PuruPuruPNGTuber(口パク) → OBS配信
 ```
 
+- **LLM を選べる**: Claude / Gemini / OpenAI(GPT)を切り替えて使えます
 - **会話の文脈を保つ**: 直近12ターンの会話履歴を渡すため、話の流れを踏まえた返答をします
 - **コメントが途切れたら自動でフリートーク**: 45秒コメントが無ければ自分から話し始めます
 - **禁止ワードフィルタ**: 不適切な応答は破棄して発話しません
@@ -54,7 +55,8 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
 1. **.NET 8 SDK** をインストールします
 2. **VOICEVOX** をインストールして起動します(`http://127.0.0.1:50021` で待ち受けます)
 3. **VB-CABLE** をインストールし、PuruPuruPNGTuber のマイク入力を `CABLE Output` に設定します
-4. 環境変数 `ANTHROPIC_API_KEY` に Claude の API キーを設定します
+4. 使用する LLM の API キーを環境変数に設定します
+   (既定は Claude の `ANTHROPIC_API_KEY`。Gemini / OpenAI も選べます。詳細は後述)
 
 ## 使い方
 
@@ -70,11 +72,29 @@ dotnet run --project Live -- --console
 45秒放置すると自分からフリートークを始めます。
 `Ctrl+C` で終了すると、その日の配信内容を要約して `data/memory.json` に保存します。
 
-環境変数で挙動を変更できます。
+#### 使用する LLM の切り替え
+
+Claude / Gemini / OpenAI(GPT)のいずれかを選べます。既定は Claude です。
+`--provider` オプション、または環境変数 `LLM_PROVIDER` で切り替えます。
+
+```
+dotnet run --project Live -- --console --provider gemini
+dotnet run --project Live -- --console --provider openai
+```
+
+選んだプロバイダに対応する API キーの環境変数を設定してください。
+
+| プロバイダ | API キー | モデル指定(任意) | 既定モデル |
+|---|---|---|---|
+| `claude` | `ANTHROPIC_API_KEY` | `CLAUDE_MODEL` | `claude-sonnet-4-6` |
+| `gemini` | `GEMINI_API_KEY` | `GEMINI_MODEL` | `gemini-2.5-flash` |
+| `openai` | `OPENAI_API_KEY` | `OPENAI_MODEL` | `gpt-4o` |
+
+#### その他の環境変数
 
 | 環境変数 | 既定値 | 説明 |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | (必須) | Claude の API キー |
+| `LLM_PROVIDER` | `claude` | 使用する LLM(`claude` / `gemini` / `openai`) |
 | `VOICEVOX_URL` | `http://127.0.0.1:50021` | VOICEVOX の API エンドポイント |
 | `VOICEVOX_SPEAKER_ID` | `3` | 話者 ID(`GET /speakers` で確認できます) |
 | `VOICEVOX_OUTPUT_DEVICE` | `CABLE Input` | 音声の出力先デバイス名(部分一致) |

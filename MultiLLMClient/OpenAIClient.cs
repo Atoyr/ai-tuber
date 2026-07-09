@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Net.Http.Headers;
 using OpenAI.Chat;
@@ -8,7 +9,7 @@ using OpenAIChatMessage = OpenAI.Chat.ChatMessage;
 
 namespace Medoz.MultiLLMClient;
 
-public class OpenAIClient : ILLMClient
+public class OpenAIClient : ILLMClient, IChatClient
 {
     private readonly string _apiKey;
     private string _model { get; set; }
@@ -28,6 +29,78 @@ public class OpenAIClient : ILLMClient
     public void SetModel(string model)
     {
         _model = model;
+        _client = null; // 次回呼び出し時に新しいモデルで作り直す
+    }
+
+    private ChatClient GetClient()
+        => _client ??= new ChatClient(model: _model, apiKey: _apiKey);
+
+    /// <summary>system + 会話履歴を OpenAI のメッセージ列に変換する</summary>
+    private static OpenAIChatMessage[] BuildMessages(string system, IReadOnlyList<ChatMessage> messages)
+    {
+        var result = new List<OpenAIChatMessage> { OpenAIChatMessage.CreateSystemMessage(system) };
+        foreach (var m in messages)
+        {
+            result.Add(m.Role == "assistant"
+                ? OpenAIChatMessage.CreateAssistantMessage(m.Content)
+                : OpenAIChatMessage.CreateUserMessage(m.Content));
+        }
+        return result.ToArray();
+    }
+
+    public async Task<string> GenerateAsync(string system, IReadOnlyList<ChatMessage> messages,
+                                            int maxTokens = 300, CancellationToken ct = default)
+    {
+        if (messages is null || messages.Count == 0)
+            throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
+
+        var options = new ChatCompletionOptions { MaxOutputTokenCount = maxTokens };
+        var response = await GetClient().CompleteChatAsync(BuildMessages(system, messages), options, ct);
+        return string.Concat(response.Value.Content.Select(part => part.Text));
+    }
+
+    public async Task<string> GenerateWithImageAsync(string system, ImageContent image, string text,
+                                                     int maxTokens = 150, CancellationToken ct = default)
+    {
+        if (image is null)
+            throw new ArgumentNullException(nameof(image));
+
+        var imageBytes = BinaryData.FromBytes(Convert.FromBase64String(image.Base64Data));
+        var userMessage = OpenAIChatMessage.CreateUserMessage(
+            ChatMessageContentPart.CreateImagePart(imageBytes, image.MediaType),
+            ChatMessageContentPart.CreateTextPart(text));
+
+        var chatMessages = new OpenAIChatMessage[]
+        {
+            OpenAIChatMessage.CreateSystemMessage(system),
+            userMessage,
+        };
+
+        var options = new ChatCompletionOptions { MaxOutputTokenCount = maxTokens };
+        var response = await GetClient().CompleteChatAsync(chatMessages, options, ct);
+        return string.Concat(response.Value.Content.Select(part => part.Text));
+    }
+
+    public async IAsyncEnumerable<string> GenerateStreamAsync(string system, IReadOnlyList<ChatMessage> messages,
+                                                              int maxTokens = 300,
+                                                              [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        if (messages is null || messages.Count == 0)
+            throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
+
+        var options = new ChatCompletionOptions { MaxOutputTokenCount = maxTokens };
+        var updates = GetClient().CompleteChatStreamingAsync(BuildMessages(system, messages), options, ct);
+
+        await foreach (var update in updates.WithCancellation(ct))
+        {
+            foreach (var part in update.ContentUpdate)
+            {
+                if (!string.IsNullOrEmpty(part.Text))
+                {
+                    yield return part.Text;
+                }
+            }
+        }
     }
 
     public async Task<string> GenerateTextAsync(string systemPrompt, string userPrompt)

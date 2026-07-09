@@ -3,6 +3,13 @@ namespace Medoz.MultiLLMClient;
 public class LLMClientFactory
 {
     public static ILLMClient CreateClient(string clientType, string apiKey, string? model = null)
+        => CreateChatClient(clientType, apiKey, model);
+
+    /// <summary>
+    /// 会話履歴・Vision・streaming に対応した <see cref="IChatClient"/> を生成する。
+    /// Claude / Gemini / OpenAI のいずれも <see cref="IChatClient"/> を実装している。
+    /// </summary>
+    public static IChatClient CreateChatClient(string clientType, string apiKey, string? model = null)
     {
         switch (clientType.ToLower())
         {
