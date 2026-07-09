@@ -25,9 +25,11 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)。
 
 ## ビルド・実行
 
-- `dotnet build`
+- `dotnet build` / `dotnet test` (ルートの `AiTuber.sln` が全プロジェクトを束ねている)
 - `dotnet run --project Chat` (LLM疎通確認)
+- `dotnet run --project Live -- --console` (配信ループのローカルテスト)
 - テストは xUnit。新規ロジックには最低限のユニットテストを付ける
+- 新規プロジェクトを追加したら `dotnet sln add <path>.csproj` を忘れずに
 
 ## 必ず守るルール
 
