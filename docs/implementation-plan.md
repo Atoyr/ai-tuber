@@ -30,10 +30,10 @@
 
 ## Phase D: Live(配信本体)
 
-- [ ] `ICommentSource` + `ConsoleCommentSource`(コンソール入力をコメント化)
-- [ ] メインループ: 4秒バッチでコメント取得 → 12ターン履歴で応答生成 → フィルタ → 発話
-- [ ] 45秒無コメントで自動フリートーク
-- [ ] Ctrl+C 終了時に配信メモを要約して SharedMemory に保存
+- [x] `ICommentSource` + `ConsoleCommentSource`(コンソール入力をコメント化)
+- [x] メインループ: 4秒バッチでコメント取得 → 12ターン履歴で応答生成 → フィルタ → 発話
+- [x] 45秒無コメントで自動フリートーク
+- [x] Ctrl+C 終了時に配信メモを要約して SharedMemory に保存
 - 完了条件: `dotnet run --project Live -- --console` で Python版 `live_aituber.py --console` と同じ体験
 
 ## Phase E: YouTube Live 対応
