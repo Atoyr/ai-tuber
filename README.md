@@ -54,7 +54,8 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
 
 1. **.NET 8 SDK** をインストールします
 2. **VOICEVOX** をインストールして起動します(`http://127.0.0.1:50021` で待ち受けます)
-3. **VB-CABLE** をインストールし、PuruPuruPNGTuber のマイク入力を `CABLE Output` に設定します
+3. 仮想オーディオデバイス(VB-CABLE / VoiceMeeter など)をインストールし、
+   PuruPuruPNGTuber のマイク入力をその出力側(例: `CABLE Output`)に設定します
 4. 使用する LLM の API キーを環境変数に設定します
    (既定は Claude の `ANTHROPIC_API_KEY`。Gemini / OpenAI も選べます。詳細は後述)
 
@@ -84,6 +85,20 @@ dotnet run --project Live -- --console --provider openai
 
 選んだプロバイダに対応する API キーの環境変数を設定してください。
 
+#### 出力デバイスの選択
+
+VOICEVOX の音声を流す出力デバイス(VB-CABLE / VoiceMeeter などの仮想オーディオデバイス)を選べます。
+デバイス名は部分一致で判定されます(既定は `CABLE Input`)。
+
+```
+dotnet run --project Live -- --list-devices                    # 利用可能なデバイス一覧を表示して終了
+dotnet run --project Live -- --console --device "VoiceMeeter"  # コマンドラインで指定
+dotnet run --project Live -- --console --select-device         # 起動時に対話で選ぶ
+```
+
+環境変数 `VOICEVOX_OUTPUT_DEVICE` でも既定値を上書きできます。
+指定したデバイスが見つからないときは対話ピッカーにフォールバックします。
+
 | プロバイダ | API キー | モデル指定(任意) | 既定モデル |
 |---|---|---|---|
 | `claude` | `ANTHROPIC_API_KEY` | `CLAUDE_MODEL` | `claude-sonnet-4-6` |
@@ -97,7 +112,7 @@ dotnet run --project Live -- --console --provider openai
 | `LLM_PROVIDER` | `claude` | 使用する LLM(`claude` / `gemini` / `openai`) |
 | `VOICEVOX_URL` | `http://127.0.0.1:50021` | VOICEVOX の API エンドポイント |
 | `VOICEVOX_SPEAKER_ID` | `3` | 話者 ID(`GET /speakers` で確認できます) |
-| `VOICEVOX_OUTPUT_DEVICE` | `CABLE Input` | 音声の出力先デバイス名(部分一致) |
+| `VOICEVOX_OUTPUT_DEVICE` | `CABLE Input` | 音声の出力先デバイス名(部分一致 / VB-CABLE 以外の仮想デバイスも指定可) |
 | `CHARACTER_NAME` | `ぷる乃` | コンソールに表示するキャラ名 |
 
 ### Chat - LLM の疎通確認

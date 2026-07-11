@@ -4,13 +4,29 @@ using Medoz.MultiLLMClient;
 using Medoz.Voicevox;
 
 // AITuber 配信本体 (Python版 live_aituber.py 相当)
-// コメント取得 → LLM(人格)応答 → フィルタ → VOICEVOX → VB-CABLE → PuruPuruPNGTuber口パク
+// コメント取得 → LLM(人格)応答 → フィルタ → VOICEVOX → 仮想オーディオデバイス → PuruPuruPNGTuber口パク
 //
 // 実行 (ローカルテスト):
 //   dotnet run --project Live -- --console
 //   dotnet run --project Live -- --console --provider gemini
+//   dotnet run --project Live -- --list-devices                    # 出力デバイス一覧
+//   dotnet run --project Live -- --console --device "VoiceMeeter"  # デバイス指定
+//   dotnet run --project Live -- --console --select-device         # 起動時に対話で選ぶ
+
+// --list-devices は他の設定検証より前に処理する (環境変数なしでも動くようにする)
+if (args.Contains("--list-devices"))
+{
+    var deviceNames = AudioPlayer.GetOutputDeviceNames();
+    Console.WriteLine("利用可能な出力デバイス:");
+    for (int i = 0; i < deviceNames.Count; i++)
+    {
+        Console.WriteLine($"  {i + 1}. {deviceNames[i]}");
+    }
+    return 0;
+}
 
 bool consoleMode = args.Contains("--console");
+bool selectDevice = args.Contains("--select-device");
 string[] positional = args.Where(a => !a.StartsWith("--")).ToArray();
 
 var config = AppConfig.LoadFromEnvironment();
@@ -26,6 +42,19 @@ if (providerIndex >= 0)
     }
     config = config with { LlmProvider = args[providerIndex + 1] };
     positional = positional.Where(a => a != args[providerIndex + 1]).ToArray();
+}
+
+// --device <name> で VOICEVOX_OUTPUT_DEVICE を上書きできる (部分一致)
+int deviceArgIndex = Array.IndexOf(args, "--device");
+if (deviceArgIndex >= 0)
+{
+    if (deviceArgIndex + 1 >= args.Length)
+    {
+        Console.WriteLine("--device には出力デバイス名 (部分一致) を指定してください。");
+        return 1;
+    }
+    config = config with { OutputDeviceName = args[deviceArgIndex + 1] };
+    positional = positional.Where(a => a != args[deviceArgIndex + 1]).ToArray();
 }
 
 if (!new[] { "claude", "gemini", "openai" }.Contains(config.LlmProvider.ToLower()))
@@ -63,7 +92,12 @@ var filter = new ModerationFilter(config.BannedWords);
 var memory = new SharedMemory(config.MemoryPath, config.RecentTweetsKeep);
 var voicevox = new VoicevoxClient(config.VoicevoxUrl);
 
-using var audioPlayer = new AudioPlayer(config.OutputDeviceName);
+string? resolvedDeviceName = ResolveOutputDevice(config.OutputDeviceName, selectDevice);
+if (resolvedDeviceName is null)
+{
+    return 1;
+}
+using var audioPlayer = new AudioPlayer(resolvedDeviceName);
 Console.WriteLine($"出力デバイス: {audioPlayer.DeviceName}");
 
 using var cts = new CancellationTokenSource();
@@ -153,3 +187,54 @@ finally
 }
 
 return 0;
+
+// 出力デバイスを解決する。
+// - forceSelect が true、または configuredFragment に一致するデバイスが無い場合、対話で選ばせる
+// - null を返した場合は起動中止 (ユーザーが選ばなかった)
+static string? ResolveOutputDevice(string configuredFragment, bool forceSelect)
+{
+    var names = AudioPlayer.GetOutputDeviceNames();
+    if (names.Count == 0)
+    {
+        Console.WriteLine("利用可能な出力デバイスがありません。");
+        return null;
+    }
+
+    bool found = names.Any(n => n.Contains(configuredFragment, StringComparison.OrdinalIgnoreCase));
+    if (!forceSelect && found)
+    {
+        return configuredFragment;
+    }
+
+    if (!found)
+    {
+        Console.WriteLine($"'{configuredFragment}' を含む出力デバイスが見つかりません。デバイスを選択してください。");
+    }
+    else
+    {
+        Console.WriteLine("出力デバイスを選択してください。");
+    }
+    for (int i = 0; i < names.Count; i++)
+    {
+        Console.WriteLine($"  {i + 1}. {names[i]}");
+    }
+    Console.Write($"番号を入力 (Enter で '{configuredFragment}' を使用): ");
+    string? choice = Console.ReadLine();
+
+    if (string.IsNullOrWhiteSpace(choice))
+    {
+        if (found)
+        {
+            return configuredFragment;
+        }
+        Console.WriteLine("デバイスが選択されなかったため中止します。");
+        return null;
+    }
+
+    if (!int.TryParse(choice, out int number) || number < 1 || number > names.Count)
+    {
+        Console.WriteLine($"無効な番号です: {choice}");
+        return null;
+    }
+    return names[number - 1];
+}
