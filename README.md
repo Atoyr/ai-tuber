@@ -131,7 +131,7 @@ dotnet run --project Live -- --console --select-device         # 起動時に対
 | `VOICEVOX_URL` | `http://127.0.0.1:50021` | VOICEVOX の API エンドポイント |
 | `VOICEVOX_SPEAKER_ID` | `3` | 話者 ID(`GET /speakers` で確認できます) |
 | `VOICEVOX_OUTPUT_DEVICE` | `CABLE Input` | 音声の出力先デバイス名(部分一致 / VB-CABLE 以外の仮想デバイスも指定可) |
-| `CHARACTER_NAME` | `ぷる乃` | コンソールに表示するキャラ名 |
+| `CHARACTER_NAME` | `ぽとふ` | コンソールに表示するキャラ名 |
 
 ### Chat - LLM の疎通確認
 

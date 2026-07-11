@@ -83,7 +83,7 @@ if (string.IsNullOrEmpty(config.LlmApiKey))
 }
 
 // キャラの表示名はコンソールログ用ラベル (人格そのものは prompts/character.md が唯一の真実)
-string displayName = Environment.GetEnvironmentVariable("CHARACTER_NAME") is { Length: > 0 } name ? name : "ぷる乃";
+string displayName = Environment.GetEnvironmentVariable("CHARACTER_NAME") is { Length: > 0 } name ? name : "ぽとふ";
 
 IChatClient chatClient = LLMClientFactory.CreateChatClient(config.LlmProvider, config.LlmApiKey, config.LlmModel);
 Console.WriteLine($"LLM: {config.LlmProvider} ({config.LlmModel})");
