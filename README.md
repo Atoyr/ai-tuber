@@ -52,14 +52,32 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
 
 ## 事前準備
 
-1. **.NET 8 SDK** をインストールします
+1. **.NET 10 SDK** をインストールします
 2. **VOICEVOX** をインストールして起動します(`http://127.0.0.1:50021` で待ち受けます)
 3. 仮想オーディオデバイス(VB-CABLE / VoiceMeeter など)をインストールし、
    PuruPuruPNGTuber のマイク入力をその出力側(例: `CABLE Output`)に設定します
 4. 使用する LLM の API キーを環境変数に設定します
    (既定は Claude の `ANTHROPIC_API_KEY`。Gemini / OpenAI も選べます。詳細は後述)
+   環境変数の設定は下記の **Setup - 初期セットアップ UI** から GUI で行えます。
 
 ## 使い方
+
+### Setup - 初期セットアップ UI
+
+LLM API キー / VOICEVOX 設定 / X 認証情報を GUI から一括で設定できる WPF アプリです。
+Windows でのみ動作します。
+
+```
+dotnet run --project Setup
+```
+
+- タブごとに「この項目を保存しない (スキップ)」チェックボックスがあり、
+  未設定のまま保存対象から外せます
+- 音声出力デバイスは現在利用可能なデバイス一覧から選択できます
+- 保存すると **ユーザー環境変数** に書き込まれ、
+  新しく起動した Live / Chat / PostX から有効になります
+  (既に開いている PowerShell / CMD セッションには反映されません)
+- X 認証情報を保存した場合は `PostX/.env` も同時に更新されます
 
 ### Live - 配信本体
 
@@ -172,6 +190,7 @@ C# のコードを変更する必要はありません。
 | `Voicevox/` | VOICEVOX クライアントと NAudio による音声再生 |
 | `MultiLLMClient/` | Claude / Gemini / OpenAI を抽象化した LLM クライアント |
 | `X/` | X API v2 クライアント |
+| `Setup/` | 初期セットアップ用 WPF アプリ (Windows 専用) |
 | `Chat/`, `PostX/` | 動作確認用のコンソールアプリ |
 
 ## ビルドとテスト
