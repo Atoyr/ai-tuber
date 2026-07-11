@@ -130,4 +130,43 @@ public class AppConfigTests
 
         Assert.True(config.TweetDryRun);
     }
+
+    [Fact]
+    public void EmotionStyleIds_HasDefaultMapping()
+    {
+        var config = new AppConfig();
+
+        Assert.Equal(1, config.EmotionStyleIds["joy"]);
+        Assert.Equal(7, config.EmotionStyleIds["angry"]);
+        Assert.True(config.UseStreaming); // ストリーミングが既定
+    }
+
+    [Fact]
+    public void LoadFromEnvironment_ParsesEmotionStylesOverride()
+    {
+        try
+        {
+            Environment.SetEnvironmentVariable("VOICEVOX_EMOTION_STYLES", "joy=1, sad=22 ,angry=7");
+
+            var config = AppConfig.LoadFromEnvironment();
+
+            Assert.Equal(1, config.EmotionStyleIds["joy"]);
+            Assert.Equal(22, config.EmotionStyleIds["sad"]);
+            Assert.Equal(7, config.EmotionStyleIds["angry"]);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("VOICEVOX_EMOTION_STYLES", null);
+        }
+    }
+
+    [Fact]
+    public void LoadFromEnvironment_FallsBackToDefaultEmotionStyles_WhenEnvEmpty()
+    {
+        Environment.SetEnvironmentVariable("VOICEVOX_EMOTION_STYLES", null);
+
+        var config = AppConfig.LoadFromEnvironment();
+
+        Assert.Equal(new AppConfig().EmotionStyleIds["joy"], config.EmotionStyleIds["joy"]);
+    }
 }

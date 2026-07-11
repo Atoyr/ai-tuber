@@ -1,0 +1,42 @@
+using Medoz.TwitterBot;
+
+namespace Medoz.TwitterBot.Tests;
+
+public class TweetSchedulerTests
+{
+    [Theory]
+    [InlineData(9, true)]   // 開始時刻ちょうどは含む
+    [InlineData(14, true)]
+    [InlineData(23, true)]
+    [InlineData(8, false)]  // 開始前
+    [InlineData(24, false)] // 終了時刻は含まない (0時扱い)
+    [InlineData(0, false)]
+    public void InActiveHours_9To24(int hour, bool expected)
+    {
+        Assert.Equal(expected, TweetScheduler.InActiveHours(hour, 9, 24));
+    }
+
+    [Fact]
+    public void NextIntervalMinutes_WithinRangeInclusive()
+    {
+        var random = new Random(12345);
+        for (int i = 0; i < 1000; i++)
+        {
+            int minutes = TweetScheduler.NextIntervalMinutes(random, 180, 360);
+            Assert.InRange(minutes, 180, 360);
+        }
+    }
+
+    [Fact]
+    public void NextIntervalMinutes_CanReturnBothBounds()
+    {
+        var random = new Random(1);
+        var seen = new HashSet<int>();
+        for (int i = 0; i < 100000; i++)
+        {
+            seen.Add(TweetScheduler.NextIntervalMinutes(random, 1, 3));
+        }
+        Assert.Contains(1, seen);
+        Assert.Contains(3, seen); // 上端も出る (両端含む)
+    }
+}

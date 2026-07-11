@@ -38,26 +38,26 @@
 
 ## Phase E: YouTube Live 対応
 
-- [ ] `YouTubeCommentSource` 実装(方式は architecture.md の選択肢から判断。公式APIならクォータ配慮)
+- [x] `YouTubeCommentSource` 実装(方式は architecture.md の選択肢から判断。公式APIならクォータ配慮)
 - [ ] 動作テスト(実配信枠 or 限定公開)
 
 ## Phase F: TwitterBot(自律投稿)
 
-- [ ] コンテキスト組立(現在日時・直近配信メモ・直近ツイート10件)
-- [ ] JSON出力のパース → 140字・フィルタ・重複検証 → 最大3回再生成
-- [ ] dry-run デフォルト、`--once` オプション、9〜24時制限、180〜360分ランダム間隔
-- [ ] 既存 `Medoz.X.XClient` で投稿
+- [x] コンテキスト組立(現在日時・直近配信メモ・直近ツイート10件)
+- [x] JSON出力のパース → 140字・フィルタ・重複検証 → 最大3回再生成
+- [x] dry-run デフォルト、`--once` オプション、9〜24時制限、180〜360分ランダム間隔
+- [x] 既存 `Medoz.X.XClient` で投稿
 - 完了条件: dry-run で `python twitter_bot.py --once` 相当の出力
 
 ## Phase G: GameCommentary(ゲーム実況)
 
-- [ ] `WindowCapture` — ウィンドウタイトル部分一致で対象特定、キャプチャ、幅800pxリサイズ
-- [ ] 12秒間隔ループ: キャプチャ → Vision実況(直近4件の文脈付き) → 発話
-- [ ] エラー時はスキップして次のキャプチャで再試行
+- [x] `WindowCapture` — ウィンドウタイトル部分一致で対象特定、キャプチャ、幅800pxリサイズ
+- [x] 12秒間隔ループ: キャプチャ → Vision実況(直近4件の文脈付き) → 発話
+- [x] エラー時はスキップして次のキャプチャで再試行
 
 ## Phase H: 品質向上(v3ロードマップ Phase 3)
 
-- [ ] streaming応答を文単位("。!?"区切り)で分割し、確定した文から順次合成
-- [ ] `System.Threading.Channels` で合成キュー+再生キューの2キュー化(合成と再生の並行化)
-- [ ] 感情タグ規約を character.md に追加、パースして VOICEVOX スタイル切替
-- [ ] コメント選択の優先度ロジック(初見優先・質問優先など)
+- [x] streaming応答を文単位("。!?"区切り)で分割し、確定した文から順次合成
+- [x] `System.Threading.Channels` で合成キュー+再生キューの2キュー化(合成と再生の並行化)
+- [x] 感情タグ規約を character.md に追加、パースして VOICEVOX スタイル切替
+- [x] コメント選択の優先度ロジック(初見優先・質問優先など)

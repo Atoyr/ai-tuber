@@ -206,5 +206,6 @@ dotnet test
 
 ## ドキュメント
 
+- 利用者向け運用マニュアル: [docs/manual.md](docs/manual.md)
 - 設計と動作仕様: [docs/architecture.md](docs/architecture.md)
 - タスクと進捗: [docs/implementation-plan.md](docs/implementation-plan.md)

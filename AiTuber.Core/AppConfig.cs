@@ -55,8 +55,27 @@ public record AppConfig
     public int SpeakerId { get; init; } = 3;
     public string OutputDeviceName { get; init; } = "CABLE Input";
 
+    /// <summary>
+    /// 感情タグ (character.md 参照) → VOICEVOX スタイルID のマッピング (Phase H)。
+    /// 既定は speaker 3 (ずんだもん) のスタイル。タグ無し・未知タグは <see cref="SpeakerId"/> にフォールバック。
+    /// 環境変数 VOICEVOX_EMOTION_STYLES で "joy=1,sad=22" 形式の上書きが可能。
+    /// </summary>
+    public IReadOnlyDictionary<string, int> EmotionStyleIds { get; init; } = new Dictionary<string, int>
+    {
+        ["joy"] = 1,       // あまあま
+        ["fun"] = 3,       // ノーマル
+        ["sad"] = 22,      // ささやき
+        ["angry"] = 7,     // ツンツン
+        ["surprised"] = 3, // ノーマル
+    };
+
+    /// <summary>ストリーミング (文単位合成 + 2キューTTS) を使うか。false で従来の一括生成。</summary>
+    public bool UseStreaming { get; init; } = true;
+
     // --- YouTube Live ---
     public string YouTubeVideoId { get; init; } = "";
+    /// <summary>YouTube Data API v3 の APIキー (liveChatMessages 取得に使用)</summary>
+    public string YouTubeApiKey { get; init; } = "";
     public int CommentBatchSec { get; init; } = 4;
     public int FreetalkAfterSec { get; init; } = 45;
     public int HistoryTurns { get; init; } = 12;
@@ -79,6 +98,8 @@ public record AppConfig
     public int CaptureIntervalSec { get; init; } = 12;
     public int MaxImageWidth { get; init; } = 800;
     public int CommentaryHistoryLimit { get; init; } = 4;
+    /// <summary>実況対象ウィンドウのタイトル(部分一致)。Python版 game_commentary.py の WINDOW_TITLE_FRAGMENT 相当</summary>
+    public string GameWindowTitle { get; init; } = "";
 
     /// <summary>禁止ワード (含まれていたら投稿・発話を破棄して作り直し)</summary>
     public IReadOnlyList<string> BannedWords { get; init; } = new[] { "死ね", "殺す", "http://", "@" };
@@ -99,13 +120,37 @@ public record AppConfig
             SpeakerId = EnvInt("VOICEVOX_SPEAKER_ID", 3),
             OutputDeviceName = Env("VOICEVOX_OUTPUT_DEVICE", "CABLE Input"),
             YouTubeVideoId = Env("YT_VIDEO_ID", ""),
+            YouTubeApiKey = Env("YOUTUBE_API_KEY", ""),
+            GameWindowTitle = Env("WINDOW_TITLE_FRAGMENT", ""),
             XApiKey = Env("X_API_KEY", ""),
             XApiSecret = Env("X_API_SECRET", ""),
             XAccessToken = Env("X_ACCESS_TOKEN", ""),
             XAccessSecret = Env("X_ACCESS_SECRET", ""),
             // Python版: TWEET_DRY_RUN が "1" なら dry-run (未設定時も dry-run)
             TweetDryRun = Env("TWEET_DRY_RUN", "1") == "1",
+            EmotionStyleIds = ParseEmotionStyles(Env("VOICEVOX_EMOTION_STYLES", "")),
         };
+    }
+
+    /// <summary>
+    /// "joy=1,sad=22" 形式の文字列を感情スタイルマップにする。空なら既定マップ。
+    /// </summary>
+    private static IReadOnlyDictionary<string, int> ParseEmotionStyles(string spec)
+    {
+        if (string.IsNullOrWhiteSpace(spec))
+        {
+            return new AppConfig().EmotionStyleIds;
+        }
+        var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (string pair in spec.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            string[] kv = pair.Split('=', 2);
+            if (kv.Length == 2 && int.TryParse(kv[1].Trim(), out int id))
+            {
+                map[kv[0].Trim().ToLowerInvariant()] = id;
+            }
+        }
+        return map.Count > 0 ? map : new AppConfig().EmotionStyleIds;
     }
 
     private static string Env(string name, string defaultValue)

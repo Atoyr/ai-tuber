@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Win32 API (EnumWindows/PrintWindow) と System.Drawing.Common を使うため Windows 専用 -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Medoz.GameCommentary</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AiTuber.Core\Medoz.AiTuber.Core.csproj" />
+    <ProjectReference Include="..\MultiLLMClient\Medoz.MultiLLMClient.csproj" />
+    <ProjectReference Include="..\Voicevox\Medoz.Voicevox.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Medoz.GameCommentary.Tests" />
+  </ItemGroup>
+
+</Project>

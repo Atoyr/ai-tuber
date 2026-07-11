@@ -1,3 +1,4 @@
+using System.Text;
 using Medoz.AiTuber.Core;
 using Medoz.Live;
 using Medoz.MultiLLMClient;
@@ -9,9 +10,11 @@ using Medoz.Voicevox;
 // 実行 (ローカルテスト):
 //   dotnet run --project Live -- --console
 //   dotnet run --project Live -- --console --provider gemini
+//   dotnet run --project Live -- --youtube <videoId|URL>           # YouTube Live のコメントを取得
 //   dotnet run --project Live -- --list-devices                    # 出力デバイス一覧
 //   dotnet run --project Live -- --console --device "VoiceMeeter"  # デバイス指定
 //   dotnet run --project Live -- --console --select-device         # 起動時に対話で選ぶ
+//   dotnet run --project Live -- --console --no-stream             # 旧経路 (一括生成) で発話する
 
 // --list-devices は他の設定検証より前に処理する (環境変数なしでも動くようにする)
 if (args.Contains("--list-devices"))
@@ -27,9 +30,14 @@ if (args.Contains("--list-devices"))
 
 bool consoleMode = args.Contains("--console");
 bool selectDevice = args.Contains("--select-device");
+bool noStream = args.Contains("--no-stream"); // 旧経路 (一括生成) に切り替える
 string[] positional = args.Where(a => !a.StartsWith("--")).ToArray();
 
 var config = AppConfig.LoadFromEnvironment();
+if (noStream)
+{
+    config = config with { UseStreaming = false };
+}
 
 // --provider <claude|gemini|openai> で環境変数 LLM_PROVIDER を上書きできる
 int providerIndex = Array.IndexOf(args, "--provider");
@@ -57,22 +65,49 @@ if (deviceArgIndex >= 0)
     positional = positional.Where(a => a != args[deviceArgIndex + 1]).ToArray();
 }
 
+// --youtube <videoId|URL> で YouTube Live のコメントを取得する
+string? youtubeVideoArg = null;
+int youtubeArgIndex = Array.IndexOf(args, "--youtube");
+if (youtubeArgIndex >= 0)
+{
+    if (youtubeArgIndex + 1 >= args.Length)
+    {
+        Console.WriteLine("--youtube には videoId または YouTube の URL を指定してください。");
+        return 1;
+    }
+    youtubeVideoArg = args[youtubeArgIndex + 1];
+    positional = positional.Where(a => a != youtubeVideoArg).ToArray();
+}
+bool youtubeMode = youtubeVideoArg is not null;
+
 if (!new[] { "claude", "gemini", "openai" }.Contains(config.LlmProvider.ToLower()))
 {
     Console.WriteLine($"未知の LLM プロバイダです: {config.LlmProvider} (claude / gemini / openai のいずれかを指定してください)");
     return 1;
 }
 
-string videoId = positional.Length > 0 ? positional[0] : config.YouTubeVideoId;
+// videoId は --youtube の値 → 位置引数 → 環境変数 YT_VIDEO_ID の順で解決する
+string videoId = youtubeVideoArg
+    ?? (positional.Length > 0 ? positional[0] : config.YouTubeVideoId);
 
-if (!consoleMode && string.IsNullOrEmpty(videoId))
+if (!consoleMode && !youtubeMode && string.IsNullOrEmpty(videoId))
 {
-    Console.WriteLine("YT_VIDEO_ID が未設定です。--console でローカルテストもできます。");
+    Console.WriteLine("YT_VIDEO_ID が未設定です。--console でローカルテスト、または --youtube <videoId|URL> を指定してください。");
     return 1;
 }
-if (!consoleMode)
+// videoId が環境変数から取れていれば --youtube 省略でも YouTube モードにする
+if (!consoleMode && !string.IsNullOrEmpty(videoId))
 {
-    Console.WriteLine("YouTube Live コメント取得は Phase E で実装予定です。現在は --console を使ってください。");
+    youtubeMode = true;
+}
+if (!consoleMode && !youtubeMode)
+{
+    Console.WriteLine("--console でローカルテスト、または --youtube <videoId|URL> を指定してください。");
+    return 1;
+}
+if (youtubeMode && string.IsNullOrEmpty(config.YouTubeApiKey))
+{
+    Console.WriteLine("環境変数 YOUTUBE_API_KEY が未設定です (YouTube Data API v3 のキーが必要です)。");
     return 1;
 }
 
@@ -100,6 +135,12 @@ if (resolvedDeviceName is null)
 using var audioPlayer = new AudioPlayer(resolvedDeviceName);
 Console.WriteLine($"出力デバイス: {audioPlayer.DeviceName}");
 
+// Phase H: 文単位ストリーミング + 2キューTTS + 感情タグ + コメント選択
+var styleMap = new EmotionStyleMap(config.SpeakerId, config.EmotionStyleIds);
+var ttsPipeline = new TtsPipeline(new VoicevoxSynthesizer(voicevox), new AudioPlayerSink(audioPlayer));
+var commentSelector = new CommentSelector();
+Console.WriteLine(config.UseStreaming ? "発話: ストリーミング (文単位・2キューTTS)" : "発話: 一括生成 (--no-stream)");
+
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
 {
@@ -107,7 +148,9 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-using ICommentSource commentSource = new ConsoleCommentSource();
+using ICommentSource commentSource = youtubeMode
+    ? new YouTubeCommentSource(videoId, config.YouTubeApiKey)
+    : new ConsoleCommentSource();
 commentSource.Start(cts.Token);
 
 var history = new List<ChatMessage>();   // Claudeに渡す会話履歴
@@ -121,7 +164,9 @@ try
     {
         await Task.Delay(TimeSpan.FromSeconds(config.CommentBatchSec), cts.Token);
 
-        var comments = commentSource.Drain(5);
+        // 溜まっているコメントを広めに拾い、優先度 (初見・質問優先) で最大5件を選ぶ
+        var drained = commentSource.Drain(50);
+        var comments = commentSelector.Select(drained, 5);
         string userMessage;
         if (comments.Count > 0)
         {
@@ -141,22 +186,50 @@ try
         history.Add(new ChatMessage("user", userMessage));
         LiveMessages.TrimHistory(history, config.HistoryTurns);
 
-        string reply = await persona.GenerateAsync(history, maxTokens: 200, cts.Token);
-
-        if (!filter.IsSafe(reply))
+        string? reply;
+        if (config.UseStreaming)
         {
-            // フィルタ違反時: 応答を破棄し、そのターンの履歴も破棄して次へ
-            Console.WriteLine($"[skip] フィルタに掛かった応答: {reply}");
-            history.RemoveAt(history.Count - 1);
-            continue;
+            // ストリーミング: トークン → 文分割 → 文ごとにフィルタ → 感情タグ分離 → 2キューで合成/再生を並行化
+            var spoken = new StringBuilder();
+            var segments = LiveSpeech.ToSegmentsAsync(
+                persona.GenerateStreamAsync(history, maxTokens: 200, cts.Token),
+                filter, styleMap, spoken, cts.Token);
+            try
+            {
+                await ttsPipeline.RunAsync(segments, cts.Token);
+            }
+            catch (FilterViolationException ex)
+            {
+                // フィルタ違反時: 応答を破棄し、そのターンの履歴も破棄して次へ (既存仕様に準拠)
+                Console.WriteLine($"[skip] {ex.Message}");
+                history.RemoveAt(history.Count - 1);
+                continue;
+            }
+            reply = spoken.ToString();
+            if (reply.Length == 0)
+            {
+                // 発話内容が無かった (タグのみ等): 履歴を汚さず次へ
+                history.RemoveAt(history.Count - 1);
+                continue;
+            }
+        }
+        else
+        {
+            // 旧経路: 一括生成 → フィルタ → 合成 → 再生
+            reply = await persona.GenerateAsync(history, maxTokens: 200, cts.Token);
+            if (!filter.IsSafe(reply))
+            {
+                Console.WriteLine($"[skip] フィルタに掛かった応答: {reply}");
+                history.RemoveAt(history.Count - 1);
+                continue;
+            }
+            byte[] wav = await voicevox.SynthesizeAsync(reply, config.SpeakerId, cts.Token);
+            await audioPlayer.PlayWavAsync(wav, cts.Token);
         }
 
         history.Add(new ChatMessage("assistant", reply));
         topicsLog.Add(reply);
         Console.WriteLine($"{displayName}: {reply}");
-
-        byte[] wav = await voicevox.SynthesizeAsync(reply, config.SpeakerId, cts.Token);
-        await audioPlayer.PlayWavAsync(wav, cts.Token);
     }
 }
 catch (OperationCanceledException)
