@@ -1,0 +1,149 @@
+<Window x:Class="Medoz.Setup.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Medoz.Setup"
+        mc:Ignorable="d"
+        Title="AITuber 初期セットアップ" Height="640" Width="820"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style TargetType="TextBlock" x:Key="LabelStyle">
+            <Setter Property="Margin" Value="0,8,0,4"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="HintStyle">
+            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="16">
+        <!-- ヘッダ -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <TextBlock Text="AITuber 初期セットアップ" FontSize="20" FontWeight="Bold"/>
+            <TextBlock Style="{StaticResource HintStyle}"
+                       Text="LLM の API キー / VOICEVOX / X (Twitter) 認証情報を設定します。各タブの右上の「この項目を保存しない (スキップ)」にチェックを入れると、そのタブは保存対象から外れます。設定はユーザー環境変数として書き込まれるため、新しく起動したアプリから有効になります。"/>
+        </StackPanel>
+
+        <!-- フッタ -->
+        <Grid DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="StatusText" Grid.Column="0" VerticalAlignment="Center"
+                       TextWrapping="Wrap" Foreground="#444"/>
+            <Button x:Name="ReloadButton" Grid.Column="1" Content="現在の設定を再読み込み"
+                    Margin="0,0,8,0" Padding="10,4" Click="ReloadButton_Click"/>
+            <Button x:Name="SaveButton" Grid.Column="2" Content="保存する"
+                    Padding="16,4" FontWeight="Bold" Click="SaveButton_Click"/>
+        </Grid>
+
+        <!-- 本体 -->
+        <TabControl x:Name="MainTabs">
+
+            <!-- LLM -->
+            <TabItem Header="LLM API キー">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12">
+                        <CheckBox x:Name="SkipLlm" Content="この項目を保存しない (スキップ)"
+                                  Margin="0,0,0,8"/>
+
+                        <TextBlock Text="使用するプロバイダ" Style="{StaticResource LabelStyle}"/>
+                        <ComboBox x:Name="ProviderCombo" Width="200" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="claude"/>
+                            <ComboBoxItem Content="gemini"/>
+                            <ComboBoxItem Content="openai"/>
+                        </ComboBox>
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="Live/Chat 起動時に既定で使う LLM です。--provider オプションでも上書きできます。"/>
+
+                        <TextBlock Text="Claude - ANTHROPIC_API_KEY" Style="{StaticResource LabelStyle}"/>
+                        <PasswordBox x:Name="AnthropicKeyBox"/>
+                        <TextBlock Text="Claude モデル (CLAUDE_MODEL)" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="ClaudeModelBox"/>
+
+                        <TextBlock Text="Gemini - GEMINI_API_KEY" Style="{StaticResource LabelStyle}"/>
+                        <PasswordBox x:Name="GeminiKeyBox"/>
+                        <TextBlock Text="Gemini モデル (GEMINI_MODEL)" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="GeminiModelBox"/>
+
+                        <TextBlock Text="OpenAI - OPENAI_API_KEY" Style="{StaticResource LabelStyle}"/>
+                        <PasswordBox x:Name="OpenAIKeyBox"/>
+                        <TextBlock Text="OpenAI モデル (OPENAI_MODEL)" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="OpenAIModelBox"/>
+
+                        <TextBlock Style="{StaticResource HintStyle}" Margin="0,8,0,0"
+                                   Text="※ 使わないプロバイダのキーは空のままで構いません。空欄のキーは保存時にスキップされ、既存の環境変数を上書きしません。"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- VOICEVOX -->
+            <TabItem Header="VOICEVOX / 音声出力">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12">
+                        <CheckBox x:Name="SkipVoicevox" Content="この項目を保存しない (スキップ)"
+                                  Margin="0,0,0,8"/>
+
+                        <TextBlock Text="VOICEVOX の URL (VOICEVOX_URL)" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="VoicevoxUrlBox"/>
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="ローカル起動なら通常 http://127.0.0.1:50021 のままで OK です。"/>
+
+                        <TextBlock Text="話者 ID (VOICEVOX_SPEAKER_ID)" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="SpeakerIdBox" Width="120" HorizontalAlignment="Left"/>
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="話者一覧は VOICEVOX 起動中に http://127.0.0.1:50021/speakers で確認できます。既定は 3 (ずんだもんノーマル)。"/>
+
+                        <TextBlock Text="音声出力デバイス (VOICEVOX_OUTPUT_DEVICE)" Style="{StaticResource LabelStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <ComboBox x:Name="DeviceCombo" Width="420" IsEditable="True"/>
+                            <Button Content="再取得" Margin="8,0,0,0" Padding="10,2" Click="RefreshDevices_Click"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="PuruPuruPNGTuber のマイクとして拾わせる仮想オーディオデバイスを選びます。CABLE Input などを選択、または一部の名前を入力(部分一致)して保存できます。"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- X -->
+            <TabItem Header="X (Twitter) 認証">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12">
+                        <CheckBox x:Name="SkipX" Content="この項目を保存しない (スキップ)"
+                                  Margin="0,0,0,8"/>
+
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="X Developer Portal (https://developer.twitter.com/en/portal/dashboard) から OAuth 1.0a のキーを取得して入力します。保存すると環境変数に加えて PostX/.env にも書き出されます。"/>
+
+                        <TextBlock Text="X_CONSUMER_KEY" Style="{StaticResource LabelStyle}"/>
+                        <PasswordBox x:Name="XConsumerKeyBox"/>
+
+                        <TextBlock Text="X_CONSUMER_SECRET" Style="{StaticResource LabelStyle}"/>
+                        <PasswordBox x:Name="XConsumerSecretBox"/>
+
+                        <TextBlock Text="X_ACCESS_TOKEN" Style="{StaticResource LabelStyle}"/>
+                        <PasswordBox x:Name="XAccessTokenBox"/>
+
+                        <TextBlock Text="X_ACCESS_TOKEN_SECRET" Style="{StaticResource LabelStyle}"/>
+                        <PasswordBox x:Name="XAccessTokenSecretBox"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+    </DockPanel>
+</Window>
