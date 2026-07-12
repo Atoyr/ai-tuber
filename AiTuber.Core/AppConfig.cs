@@ -94,6 +94,14 @@ public record AppConfig
     public bool TweetDryRun { get; init; } = true;
     public int RecentTweetsKeep { get; init; } = 20;
 
+    // --- ブログ (ai-tuber-blogs) ---
+    /// <summary>true なら実 push せず生成した markdown をコンソール表示のみ (デフォルトで dry-run)</summary>
+    public bool BlogDryRun { get; init; } = true;
+    /// <summary>ai-tuber-blogs リポジトリのローカルクローンパス (実 publish 時に必須)</summary>
+    public string BlogRepoPath { get; init; } = "";
+    /// <summary>重複回避のため記憶する直近ブログ記事数</summary>
+    public int RecentPostsKeep { get; init; } = 10;
+
     // --- ゲーム実況 ---
     public int CaptureIntervalSec { get; init; } = 12;
     public int MaxImageWidth { get; init; } = 800;
@@ -128,6 +136,8 @@ public record AppConfig
             XAccessSecret = Env("X_ACCESS_SECRET", ""),
             // Python版: TWEET_DRY_RUN が "1" なら dry-run (未設定時も dry-run)
             TweetDryRun = Env("TWEET_DRY_RUN", "1") == "1",
+            BlogDryRun = Env("BLOG_DRY_RUN", "1") == "1",
+            BlogRepoPath = Env("BLOG_REPO_PATH", ""),
             EmotionStyleIds = ParseEmotionStyles(Env("VOICEVOX_EMOTION_STYLES", "")),
         };
     }

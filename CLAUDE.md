@@ -20,7 +20,8 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)。
 新規追加予定(詳細は @docs/architecture.md):
 - `Voicevox/` — VOICEVOX クライアント + NAudio 再生
 - `AiTuber.Core/` — Persona / Memory / ModerationFilter
-- `Live/`, `GameCommentary/`, `TwitterBot/` — 各モードの実行アプリ
+- `Live/`, `GameCommentary/`, `TwitterBot/`, `BlogBot/` — 各モードの実行アプリ
+  (ブログの設計と公開先リポジトリは @docs/blog-architecture.md)
 - `prompts/` — キャラ人格・モード別プロンプト(Markdown)
 
 ## ビルド・実行

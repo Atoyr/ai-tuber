@@ -10,6 +10,11 @@ public record StreamNote(
     [property: JsonPropertyName("date")] string Date,
     [property: JsonPropertyName("summary")] string Summary);
 
+/// <summary>公開したブログ記事1件の記録 (重複回避用)</summary>
+public record PostNote(
+    [property: JsonPropertyName("date")] string Date,
+    [property: JsonPropertyName("title")] string Title);
+
 /// <summary>data/memory.json の中身</summary>
 public class MemoryData
 {
@@ -19,6 +24,10 @@ public class MemoryData
     /// <summary>直近ツイート本文 (新しい順)</summary>
     [JsonPropertyName("recent_tweets")]
     public List<string> RecentTweets { get; set; } = new();
+
+    /// <summary>直近に公開したブログ記事 (新しい順)</summary>
+    [JsonPropertyName("recent_posts")]
+    public List<PostNote> RecentPosts { get; set; } = new();
 }
 
 /// <summary>
@@ -30,6 +39,7 @@ public class MemoryData
 public class SharedMemory
 {
     private const int StreamNotesKeep = 10;
+    private const int RecentPostsKeep = 10;
     private const string DateFormat = "yyyy-MM-dd HH:mm";
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -77,6 +87,20 @@ public class SharedMemory
         if (memory.StreamNotes.Count > StreamNotesKeep)
         {
             memory.StreamNotes.RemoveRange(0, memory.StreamNotes.Count - StreamNotesKeep);
+        }
+        Save(memory);
+    }
+
+    /// <summary>公開したブログ記事を先頭に記録する。最大10件を保持</summary>
+    public void AddPost(string title) => AddPost(title, DateTime.Now);
+
+    public void AddPost(string title, DateTime now)
+    {
+        var memory = Load();
+        memory.RecentPosts.Insert(0, new PostNote(now.ToString(DateFormat, CultureInfo.InvariantCulture), title));
+        if (memory.RecentPosts.Count > RecentPostsKeep)
+        {
+            memory.RecentPosts.RemoveRange(RecentPostsKeep, memory.RecentPosts.Count - RecentPostsKeep);
         }
         Save(memory);
     }

@@ -63,3 +63,18 @@
 - [x] `System.Threading.Channels` で合成キュー+再生キューの2キュー化(合成と再生の並行化)
 - [x] 感情タグ規約を character.md に追加、パースして VOICEVOX スタイル切替
 - [x] コメント選択の優先度ロジック(初見優先・質問優先など)
+
+## Phase I: ブログ(GitHub Pages)
+
+設計: @docs/blog-architecture.md。サイト本体は別リポジトリ [Atoyr/ai-tuber-blogs](https://github.com/Atoyr/ai-tuber-blogs)。
+
+- [x] ai-tuber-blogs: Nuxt 3 + @nuxt/content サイト一式(記事一覧・詳細・About・deploy.yml・CLAUDE.md)
+- [x] `prompts/blog_system.md` 追加
+- [x] `SharedMemory` に `RecentPosts`(直近記事、最大10件)追加
+- [x] `BlogBot/` — 生成 → JSONパース → 検証(タイトル40字・本文200〜2000字・フィルタ・重複)→ 最大3回再生成
+- [x] `IBlogPublisher` — `DryRunBlogPublisher`(デフォルト)/ `GitBlogPublisher`(BLOG_DRY_RUN=0 で commit & push)
+- [x] ユニットテスト
+- [ ] ai-tuber-blogs を main に push し、Settings → Pages → Source を「GitHub Actions」に設定(手動)
+- [ ] 実機テスト: `BLOG_DRY_RUN=0` で記事が公開されることを確認
+- 完了条件: `dotnet run --project BlogBot` (dry-run) で記事 markdown が出力され、本番化すると
+  https://atoyr.github.io/ai-tuber-blogs/ に記事が載る
