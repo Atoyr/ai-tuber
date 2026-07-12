@@ -93,6 +93,24 @@ streaming は Anthropic の SSE (`"stream": true`) を `IAsyncEnumerable<string>
 
 まず `ICommentSource` を切って `ConsoleCommentSource` で全体を動かし、YouTube実装は後から差し替える。
 
+## Twitch Live チャット取得(実装済み)
+
+配信のメインが Twitch のため `TwitchCommentSource` を実装済み。方式は **Twitch IRC への匿名(read-only)接続**:
+
+- `irc.chat.twitch.tv:6697`(TLS)へ `TcpClient` + `SslStream` で接続
+- `NICK justinfan<ランダム数字>` で匿名ログイン(**OAuth・PASS 不要 = APIキー不要**)
+- `CAP REQ :twitch.tv/tags` で `display-name` タグを要求、`JOIN #<channel>` で参加
+- サーバの `PING :xxx` には `PONG :xxx` を返す(返さないと切断される)
+- コメント行 `@...;display-name=Foo;... :login!login@... PRIVMSG #channel :本文` を、
+  IRC 行パース(`[@tags] [:prefix] COMMAND [params] [:trailing]`)で著者・本文に分解。
+  著者は `display-name`(空なら login 名)、本文はトレーリング(最初の `" :"` 以降=本文中の `:` や絵文字を保持)
+- パース処理は副作用の無い static メソッド(`ParseLine` / `TryParseComment` / `IsPing` / `NormalizeChannel`)に
+  分離してユニットテスト対象にする。接続部は `Func<CancellationToken, Stream>` で注入可能にしフェイクストリームでテストする
+- 切断・例外時はログを出して数秒後に自動再接続し、ループを殺さない。キャンセルで綺麗に停止
+- チャンネル指定は素の名前 / `#name` / `twitch.tv/name` URL のいずれも受け付けて小文字に正規化
+
+`dotnet run --project Live -- --twitch <channel|URL>` で起動する。
+
 ## 将来ロードマップ(v3計画から引き継ぎ)
 
 - **Phase 3(最優先・効果最大)**: streaming + 文単位分割で発話遅延削減、
@@ -101,4 +119,4 @@ streaming は Anthropic の SSE (`"stream": true`) を `IAsyncEnumerable<string>
   コメント選択の優先度ロジック
 - Phase 4: 視聴者ごとのプロフィール、配信サマリの階層化
 - Phase 5: エラー復旧・ログ・ローカル監視ダッシュボード
-- Phase 6: 切り抜き生成、Twitch対応(ICommentSource の実装追加)
+- Phase 6: 切り抜き生成、~~Twitch対応(ICommentSource の実装追加)~~ → Twitch対応は `TwitchCommentSource`(IRC匿名接続)で実装済み

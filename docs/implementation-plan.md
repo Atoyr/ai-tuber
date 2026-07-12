@@ -40,6 +40,8 @@
 
 - [x] `YouTubeCommentSource` 実装(方式は architecture.md の選択肢から判断。公式APIならクォータ配慮)
 - [ ] 動作テスト(実配信枠 or 限定公開)
+- [x] `TwitchCommentSource` 実装(Twitch IRC 匿名接続 / APIキー不要。`--twitch <channel|URL>`)
+- [ ] Twitch 実配信での動作テスト(実チャンネルで接続・コメント取得を確認)
 
 ## Phase F: TwitterBot(自律投稿)
 

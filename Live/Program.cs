@@ -11,6 +11,7 @@ using Medoz.Voicevox;
 //   dotnet run --project Live -- --console
 //   dotnet run --project Live -- --console --provider gemini
 //   dotnet run --project Live -- --youtube <videoId|URL>           # YouTube Live のコメントを取得
+//   dotnet run --project Live -- --twitch <channel|URL>            # Twitch チャットを取得 (APIキー不要)
 //   dotnet run --project Live -- --list-devices                    # 出力デバイス一覧
 //   dotnet run --project Live -- --console --device "VoiceMeeter"  # デバイス指定
 //   dotnet run --project Live -- --console --select-device         # 起動時に対話で選ぶ
@@ -80,6 +81,21 @@ if (youtubeArgIndex >= 0)
 }
 bool youtubeMode = youtubeVideoArg is not null;
 
+// --twitch <channel|URL> で Twitch チャットのコメントを取得する (匿名接続・APIキー不要)
+string? twitchChannelArg = null;
+int twitchArgIndex = Array.IndexOf(args, "--twitch");
+if (twitchArgIndex >= 0)
+{
+    if (twitchArgIndex + 1 >= args.Length)
+    {
+        Console.WriteLine("--twitch にはチャンネル名または twitch.tv の URL を指定してください。");
+        return 1;
+    }
+    twitchChannelArg = args[twitchArgIndex + 1];
+    positional = positional.Where(a => a != twitchChannelArg).ToArray();
+}
+bool twitchMode = twitchChannelArg is not null;
+
 if (!new[] { "claude", "gemini", "openai" }.Contains(config.LlmProvider.ToLower()))
 {
     Console.WriteLine($"未知の LLM プロバイダです: {config.LlmProvider} (claude / gemini / openai のいずれかを指定してください)");
@@ -90,19 +106,19 @@ if (!new[] { "claude", "gemini", "openai" }.Contains(config.LlmProvider.ToLower(
 string videoId = youtubeVideoArg
     ?? (positional.Length > 0 ? positional[0] : config.YouTubeVideoId);
 
-if (!consoleMode && !youtubeMode && string.IsNullOrEmpty(videoId))
+if (!consoleMode && !youtubeMode && !twitchMode && string.IsNullOrEmpty(videoId))
 {
-    Console.WriteLine("YT_VIDEO_ID が未設定です。--console でローカルテスト、または --youtube <videoId|URL> を指定してください。");
+    Console.WriteLine("YT_VIDEO_ID が未設定です。--console でローカルテスト、--youtube <videoId|URL>、または --twitch <channel|URL> を指定してください。");
     return 1;
 }
-// videoId が環境変数から取れていれば --youtube 省略でも YouTube モードにする
-if (!consoleMode && !string.IsNullOrEmpty(videoId))
+// videoId が環境変数から取れていれば --youtube 省略でも YouTube モードにする (Twitch/コンソール指定時は除く)
+if (!consoleMode && !twitchMode && !string.IsNullOrEmpty(videoId))
 {
     youtubeMode = true;
 }
-if (!consoleMode && !youtubeMode)
+if (!consoleMode && !youtubeMode && !twitchMode)
 {
-    Console.WriteLine("--console でローカルテスト、または --youtube <videoId|URL> を指定してください。");
+    Console.WriteLine("--console でローカルテスト、--youtube <videoId|URL>、または --twitch <channel|URL> を指定してください。");
     return 1;
 }
 if (youtubeMode && string.IsNullOrEmpty(config.YouTubeApiKey))
@@ -148,9 +164,11 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-using ICommentSource commentSource = youtubeMode
-    ? new YouTubeCommentSource(videoId, config.YouTubeApiKey)
-    : new ConsoleCommentSource();
+using ICommentSource commentSource = twitchMode
+    ? new TwitchCommentSource(twitchChannelArg!)
+    : youtubeMode
+        ? new YouTubeCommentSource(videoId, config.YouTubeApiKey)
+        : new ConsoleCommentSource();
 commentSource.Start(cts.Token);
 
 var history = new List<ChatMessage>();   // Claudeに渡す会話履歴

@@ -29,7 +29,19 @@
 - 2026-07-11: ステップ5(全体検証)開始。
 - 2026-07-11: ステップ5完了。全146テストパスを自分でも再確認。
 - 2026-07-11: ステップ6(マニュアル作成)開始。Opus サブエージェントに指示。
-- 2026-07-12: ステップ6完了。**全タスク完了**。ビルド0エラー・テスト146件全パス・マニュアル作成済み。コミットは未実施(ユーザー判断待ち)。
+- 2026-07-12: ステップ6完了。ビルド0エラー・テスト146件全パス・マニュアル作成済み。
+- 2026-07-12: ユーザー指示で追加タスク。全変更を d314052 でコミット・プッシュ済み。配信は YouTube より Twitch がメインとのことで Twitch 対応(ステップ8)開始。Opus サブエージェントに指示。
+- 2026-07-12: ステップ8完了。Live/TwitchCommentSource.cs(IRC 行パースは static メソッドに分離しテスト可能、接続は Func<CancellationToken, Stream> 注入)+ Live.Tests/TwitchCommentSourceTests.cs(26件)。Live.Tests 54件、全体172件全パス。ステップ9でコミット・プッシュ。
+
+## 手動テスト(Twitch)
+
+- 実チャンネルでの接続確認: `dotnet run --project Live -- --twitch <チャンネル名>` を配信中のチャンネルで実行し、コメント取得→応答→発話を確認する(implementation-plan.md Phase E の未チェック項目)
+
+## 追加タスク(2026-07-12 ユーザー指示)
+
+- [x] 7. 全変更をコミット・プッシュ(d314052 として push 済み)
+- [x] 8. Twitch ライブ配信対応完了: `TwitchCommentSource`(Twitch IRC 匿名接続=justinfan・APIキー不要、TLS 6697、PING/PONG、自動再接続、チャンネル名/URL 正規化)+ `--twitch <channel|URL>` オプション + テスト26件 + architecture.md / manual.md 更新。全172テストパス
+- [x] 9. Twitch 対応をコミット・プッシュ済み
 
 ## 残作業(手動・任意)
 
