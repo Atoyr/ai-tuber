@@ -45,6 +45,8 @@
 
 ## 残作業(手動・任意)
 
+- 将来実装(ロードマップ記載済み): Twitch チャットへのコメント投稿 = architecture.md「将来ロードマップ」Phase 7(OAuth 2.0 必須: chat:edit / user:write:chat、ICommentPoster 抽象、dry-run デフォルト)
+
 - Phase E「動作テスト(実配信枠 or 限定公開)」— YouTube の実ライブ配信が必要なため自動化不可。手順は docs/manual.md の「未実施の手動テスト」参照
 - マニュアル執筆中に見つかった軽微な不整合(コード未修正・要判断):
   1. X 認証の環境変数名が TwitterBot(X_API_KEY 系)と PostX(X_CONSUMER_KEY 系)で不一致(Setup は両方に書き込むため実害なし)

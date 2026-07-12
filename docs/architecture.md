@@ -120,3 +120,10 @@ streaming は Anthropic の SSE (`"stream": true`) を `IAsyncEnumerable<string>
 - Phase 4: 視聴者ごとのプロフィール、配信サマリの階層化
 - Phase 5: エラー復旧・ログ・ローカル監視ダッシュボード
 - Phase 6: 切り抜き生成、~~Twitch対応(ICommentSource の実装追加)~~ → Twitch対応は `TwitchCommentSource`(IRC匿名接続)で実装済み
+- **Phase 7: Twitch チャットへのコメント投稿(書き込み)**。現状の読み取りは匿名接続で認証不要だが、
+  書き込みには OAuth 2.0 が必須になる:
+  - ボット用アカウント + Twitch 開発者コンソールでのアプリ登録(Client ID)
+  - 認可フローは Device Code Grant か Authorization Code Grant。スコープは IRC 経由なら `chat:edit`(+`chat:read`)、
+    Helix API(`POST /helix/chat/messages`)なら `user:write:chat`。リフレッシュトークンの更新処理も必要
+  - 送信方法: IRC で `PASS oauth:<token>` + 本名 NICK でログインし `PRIVMSG`、もしくは Helix API
+  - 設計方針: `ICommentPoster` のような抽象を切り、トークンは環境変数から注入、**dry-run デフォルト**の原則に従う
