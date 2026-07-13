@@ -78,3 +78,18 @@
 - [ ] 実機テスト: `BLOG_DRY_RUN=0` で記事が公開されることを確認
 - 完了条件: `dotnet run --project BlogBot` (dry-run) で記事 markdown が出力され、本番化すると
   https://atoyr.github.io/ai-tuber-blogs/ に記事が載る
+
+## Phase J: TwitterBot の Linux (ラズパイ/VM) 常時運用
+
+設計: @docs/twitterbot-linux-deployment.md。systemd timer でランダム間隔 (180〜360分) を実現する。
+
+- [x] `TwitterBot` に `--scheduled` オプション追加 (時間帯チェック付き1回実行。timer から呼ばれる)
+- [x] CI (GitHub Actions): Windows でビルド+全テスト、Ubuntu で linux-arm64 publish 検証 (.github/workflows/ci.yml)
+- [ ] `dotnet publish -r linux-arm64 --self-contained -p:PublishSingleFile=true` で発行し、実機に配置
+- [ ] `/etc/ai-tuber/twitterbot.env` (TZ=Asia/Tokyo, APIキー, TWEET_DRY_RUN=1) と
+      `twitterbot.service` / `twitterbot.timer` を設置
+- [ ] dry-run で `--once` 手動実行 → timer 発火を数回確認 (時間外スキップ含む)
+- [ ] `TWEET_DRY_RUN=0` で本番化
+- [ ] (任意) Syncthing で `data/` を配信PCと同期し、配信メモをツイートに反映
+- 完了条件: 配信PCを落としていてもラズパイ単独で 9〜24時にランダム投稿され続ける
+

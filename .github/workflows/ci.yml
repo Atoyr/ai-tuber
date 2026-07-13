@@ -1,0 +1,51 @@
+# ビルド + 全ユニットテスト + TwitterBot の Linux 向け publish 検証
+# GameCommentary / Setup が net10.0-windows のため、ソリューション全体のビルドとテストは Windows で行う。
+# TwitterBot はラズパイ (linux-arm64) で常時運用するため (docs/twitterbot-linux-deployment.md)、
+# publish が通ることを ubuntu ジョブで検証し、成果物をアーティファクトとして残す。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore AiTuber.sln
+
+      - name: Build
+        run: dotnet build AiTuber.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test AiTuber.sln -c Release --no-build --verbosity normal
+
+  publish-twitterbot-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish (linux-arm64, self-contained single file)
+        run: >
+          dotnet publish TwitterBot/TwitterBot.csproj
+          -c Release -r linux-arm64 --self-contained
+          -p:PublishSingleFile=true
+          -o publish/twitterbot
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: twitterbot-linux-arm64
+          path: publish/twitterbot/

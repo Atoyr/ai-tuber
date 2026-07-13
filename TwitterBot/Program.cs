@@ -12,8 +12,9 @@ using Medoz.TwitterBot;
 // - 投稿時間帯 (9〜24時) と間隔 (180〜360分) を制限
 //
 // 実行:
-//   dotnet run --project TwitterBot            # 常駐してスケジュール投稿
-//   dotnet run --project TwitterBot -- --once  # 1回だけ生成・投稿して終了 (動作確認用)
+//   dotnet run --project TwitterBot                 # 常駐してスケジュール投稿
+//   dotnet run --project TwitterBot -- --once       # 1回だけ生成・投稿して終了 (動作確認用・時間帯チェックなし)
+//   dotnet run --project TwitterBot -- --scheduled  # 時間帯 (9〜24時) 内なら1回投稿して終了 (systemd timer 用)
 //   dotnet run --project TwitterBot -- --provider gemini
 
 var config = AppConfig.LoadFromEnvironment();
@@ -76,6 +77,21 @@ Console.CancelKeyPress += (_, e) =>
 if (args.Contains("--once"))
 {
     await PostOnceAsync();
+    return 0;
+}
+
+// systemd timer からの起動用: 時間帯内なら1回投稿、時間外なら何もせず正常終了
+// (常駐ループの1イテレーションと同じ挙動。docs/twitterbot-linux-deployment.md 参照)
+if (args.Contains("--scheduled"))
+{
+    if (TweetScheduler.InActiveHours(DateTime.Now, config.TweetActiveHourStart, config.TweetActiveHourEnd))
+    {
+        await PostOnceAsync();
+    }
+    else
+    {
+        Console.WriteLine($"[{DateTime.Now:HH:mm}] 投稿時間外のためスキップ");
+    }
     return 0;
 }
 
