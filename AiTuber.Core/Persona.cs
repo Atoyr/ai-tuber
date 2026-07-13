@@ -4,7 +4,7 @@ namespace Medoz.AiTuber.Core;
 
 /// <summary>
 /// キャラクター人格 (Python版 core/persona.py の PersonaClient 相当)。
-/// prompts/character.md (共通人格) + モード別md を結合してシステムプロンプトとし、
+/// ペルソナパッケージの character.md (共通人格) + モード別md を結合してシステムプロンプトとし、
 /// IChatClient をラップする。配信も Twitter もここを通ることで同じ"魂"から発話が生成される。
 /// </summary>
 public class Persona
@@ -13,22 +13,11 @@ public class Persona
 
     public string SystemPrompt { get; }
 
-    public Persona(IChatClient client, string promptDir, string modeFile)
+    public Persona(IChatClient client, PersonaPackage package, string modeFile)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
-        SystemPrompt = BuildSystemPrompt(promptDir, modeFile);
+        SystemPrompt = package.BuildSystemPrompt(modeFile);
     }
-
-    /// <summary>character.md (共通人格) + モード別指示 を結合してシステムプロンプトにする</summary>
-    public static string BuildSystemPrompt(string promptDir, string modeFile)
-    {
-        string character = LoadPrompt(promptDir, "character.md");
-        string mode = LoadPrompt(promptDir, modeFile);
-        return $"{character}\n\n---\n\n{mode}";
-    }
-
-    public static string LoadPrompt(string promptDir, string name)
-        => File.ReadAllText(Path.Combine(promptDir, name));
 
     public async Task<string> GenerateAsync(IReadOnlyList<ChatMessage> messages,
                                             int maxTokens = 300, CancellationToken ct = default)

@@ -16,6 +16,8 @@ public class BlogGeneratorTests : IDisposable
     {
         _promptDir = Path.Combine(Path.GetTempPath(), "blogbot-prompts-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_promptDir);
+        File.WriteAllText(Path.Combine(_promptDir, "persona.json"),
+            """{ "schemaVersion": 1, "name": "ぽとふ", "slug": "potofu", "voice": { "speakerId": 3, "emotionStyles": {} } }""");
         File.WriteAllText(Path.Combine(_promptDir, "character.md"), "あなたはぽとふです。");
         File.WriteAllText(Path.Combine(_promptDir, "blog_system.md"), "ブログモードの指示。");
         _memoryPath = Path.Combine(_promptDir, "memory.json");
@@ -31,7 +33,7 @@ public class BlogGeneratorTests : IDisposable
 
     private BlogGenerator CreateGenerator(FakeChatClient client, out SharedMemory memory)
     {
-        var persona = new Persona(client, _promptDir, "blog_system.md");
+        var persona = new Persona(client, PersonaPackage.Load(_promptDir), "blog_system.md");
         var filter = new ModerationFilter(BannedWords);
         memory = new SharedMemory(_memoryPath);
         return new BlogGenerator(persona, filter, memory);

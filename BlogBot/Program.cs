@@ -42,12 +42,26 @@ if (string.IsNullOrEmpty(config.LlmApiKey))
     return 1;
 }
 
+// ペルソナパッケージ (人格・追加禁止ワード) をロードする。不足があればここで fail fast
+PersonaPackage personaPackage;
+try
+{
+    personaPackage = PersonaPackage.Load(config.PersonaDir, "blog_system.md");
+}
+catch (PersonaLoadException ex)
+{
+    Console.WriteLine(ex.Message);
+    return 1;
+}
+config = config.ApplyPersona(personaPackage.Manifest);
+Console.WriteLine($"ペルソナ: {personaPackage.Manifest.Name} ({config.PersonaDir})");
+
 IChatClient chatClient = LLMClientFactory.CreateChatClient(config.LlmProvider, config.LlmApiKey, config.LlmModel);
 Console.WriteLine($"LLM: {config.LlmProvider} ({config.LlmModel})");
 
-var persona = new Persona(chatClient, config.PromptDir, "blog_system.md");
+var persona = new Persona(chatClient, personaPackage, "blog_system.md");
 var filter = new ModerationFilter(config.BannedWords);
-var memory = new SharedMemory(config.MemoryPath, config.RecentTweetsKeep);
+var memory = new SharedMemory(config.MemoryPathFor(personaPackage.Manifest.Slug), config.RecentTweetsKeep);
 var generator = new BlogGenerator(persona, filter, memory);
 
 IBlogPublisher publisher;

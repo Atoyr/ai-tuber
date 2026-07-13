@@ -93,3 +93,20 @@
 - [ ] (任意) Syncthing で `data/` を配信PCと同期し、配信メモをツイートに反映
 - 完了条件: 配信PCを落としていてもラズパイ単独で 9〜24時にランダム投稿され続ける
 
+## Phase K: ペルソナ外部化
+
+設計: @docs/persona-architecture.md。人格を外部ディレクトリ/別リポジトリに切り出し、
+このリポジトリはエンジンに徹する。
+
+- [x] `AiTuber.Core/PersonaPackage.cs` — persona.json + character.md のロードと検証(fail fast)+ ユニットテスト
+- [x] `personas/default/` 同梱サンプルペルソナ(中立キャラ + persona.json)
+- [x] `AppConfig`: `PromptDir` → `PersonaDir`(環境変数 `PERSONA_DIR`)、SpeakerId/EmotionStyleIds/BannedWords の優先順位を「デフォルト < persona.json < 環境変数」に
+- [x] 各アプリ(Live / TwitterBot / GameCommentary / BlogBot)を PersonaPackage 経由に切替。表示名も persona.json から
+      (Chat はプロンプト手入力の疎通確認アプリのためペルソナを使わない)
+- [x] `SharedMemory` の保存先を `data/<slug>/memory.json` に(既存 `data/memory.json` は `data/potofu/` へ移動済み)
+- [x] 移行措置: `prompts/persona.json`(ぽとふのマニフェスト)を追加し、`PERSONA_DIR=prompts` で従来人格のまま動くことを確認。
+      **`PERSONA_DIR` 未設定時は同梱サンプルが起動する**(従来のぽとふではない)点に注意
+- [ ] `Atoyr/ai-tuber-persona-potofu`(private)を作成し現 `prompts/` 一式(persona.json 含む)を移動、
+      sibling clone + `PERSONA_DIR=../ai-tuber-persona-potofu` で従来と同一動作を確認
+- [ ] `prompts/` を削除し、CLAUDE.md / architecture.md の「prompts/character.md が唯一の真実」関連記述を更新
+- 完了条件: `PERSONA_DIR` の向け替えだけで別人格として `dotnet run --project Live -- --console` が動く
