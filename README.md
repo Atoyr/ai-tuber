@@ -8,7 +8,7 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
 
 ### 1. AIキャラクターとのおしゃべり(実装済み)
 
-`prompts/character.md` に書かれた人格を読み込み、LLM が視聴者コメントに応答します。
+ペルソナパッケージ(後述)の `character.md` に書かれた人格を読み込み、LLM が視聴者コメントに応答します。
 応答は VOICEVOX で音声合成され、VB-CABLE 経由で PuruPuruPNGTuber に渡ることで
 アバターが口パクします。
 
@@ -20,8 +20,10 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
 - **会話の文脈を保つ**: 直近12ターンの会話履歴を渡すため、話の流れを踏まえた返答をします
 - **コメントが途切れたら自動でフリートーク**: 45秒コメントが無ければ自分から話し始めます
 - **禁止ワードフィルタ**: 不適切な応答は破棄して発話しません
-- **配信メモの自動生成**: 配信終了時に内容を要約して `data/memory.json` に保存し、
+- **配信メモの自動生成**: 配信終了時に内容を要約して `data/<ペルソナslug>/memory.json` に保存し、
   X への投稿ネタとして再利用できます
+- **人格を差し替えられる**: 人格は「ペルソナパッケージ」として外部ディレクトリ/別リポジトリで管理し、
+  環境変数 `PERSONA_DIR` の向け替えだけで別キャラとして起動できます(後述)
 
 ### 2. X(Twitter)への投稿(一部実装済み)
 
@@ -89,7 +91,7 @@ dotnet run --project Live -- --console
 
 コメントを入力すると、キャラクターが応答して喋ります。
 45秒放置すると自分からフリートークを始めます。
-`Ctrl+C` で終了すると、その日の配信内容を要約して `data/memory.json` に保存します。
+`Ctrl+C` で終了すると、その日の配信内容を要約して `data/<ペルソナslug>/memory.json` に保存します。
 
 #### 使用する LLM の切り替え
 
@@ -127,11 +129,12 @@ dotnet run --project Live -- --console --select-device         # 起動時に対
 
 | 環境変数 | 既定値 | 説明 |
 |---|---|---|
+| `PERSONA_DIR` | `personas/default` | ペルソナパッケージのディレクトリ(下記「ペルソナ(人格)の差し替え」参照) |
 | `LLM_PROVIDER` | `claude` | 使用する LLM(`claude` / `gemini` / `openai`) |
 | `VOICEVOX_URL` | `http://127.0.0.1:50021` | VOICEVOX の API エンドポイント |
-| `VOICEVOX_SPEAKER_ID` | `3` | 話者 ID(`GET /speakers` で確認できます) |
+| `VOICEVOX_SPEAKER_ID` | (persona.json の値) | 話者 ID の上書き(`GET /speakers` で確認できます) |
 | `VOICEVOX_OUTPUT_DEVICE` | `CABLE Input` | 音声の出力先デバイス名(部分一致 / VB-CABLE 以外の仮想デバイスも指定可) |
-| `CHARACTER_NAME` | `ぽとふ` | コンソールに表示するキャラ名 |
+| `CHARACTER_NAME` | (persona.json の値) | コンソールに表示するキャラ名の上書き |
 
 ### Chat - LLM の疎通確認
 
@@ -170,16 +173,43 @@ dotnet run --project Chat
 
 4. プロンプトが表示されたら、投稿するメッセージ(280文字以内)を入力します。
 
-## キャラクターのカスタマイズ
+## ペルソナ(人格)の差し替え
 
-キャラクターの人格は `prompts/` 配下の Markdown ファイルが唯一の設定元です。
-C# のコードを変更する必要はありません。
+このリポジトリは「AITuber エンジン」に徹し、キャラクターの人格は**ペルソナパッケージ**
+(1人格 = 1ディレクトリ。通常は別リポジトリ)として外部管理します。
+環境変数 `PERSONA_DIR` を向け替えるだけで、C# のコードを変更せずに別キャラとして起動できます。
+フォーマットの正式契約は [docs/persona-architecture.md](docs/persona-architecture.md) を参照してください。
 
-| ファイル | 役割 |
-|---|---|
-| `prompts/character.md` | 共通人格(名前・口調・性格・禁止事項) |
-| `prompts/live_system.md` | 配信モード専用の指示 |
-| `prompts/tweet_system.md` | ツイートモード専用の指示 |
+```
+# 未設定なら同梱のサンプルペルソナ (personas/default) で起動する
+dotnet run --project Live -- --console
+
+# 外部のペルソナリポジトリを指定して起動する
+$env:PERSONA_DIR = "..\ai-tuber-persona-potofu"
+dotnet run --project Live -- --console
+```
+
+### ペルソナパッケージの構成
+
+| ファイル | 必須 | 役割 |
+|---|---|---|
+| `persona.json` | ○ | マニフェスト(表示名・slug・VOICEVOX 話者ID・感情スタイル・追加禁止ワード) |
+| `character.md` | ○ | 共通人格(名前・口調・性格・禁止事項)= キャラの魂 |
+| `live_system.md` | 使うモードのみ | 配信モード専用の指示 |
+| `tweet_system.md` | 〃 | ツイートモード専用の指示 |
+| `game_system.md` | 〃 | ゲーム実況モード専用の指示 |
+| `blog_system.md` | 〃 | ブログモード専用の指示 |
+
+- 必須ファイルや起動するモードの md が無い場合は、不足ファイル名を示して起動時にエラーになります
+- 設定の優先順位は「エンジンのデフォルト値 < persona.json < 環境変数」です。
+  たとえば話者 ID は persona.json の `voice.speakerId` が使われ、環境変数 `VOICEVOX_SPEAKER_ID` を
+  設定した場合のみそちらが優先されます
+- 配信メモやツイート履歴は `data/<slug>/memory.json` にペルソナごとに保存されます
+- 同梱の [personas/default/](personas/default/) はフォーマットの実例を兼ねたサンプルです。
+  新しいペルソナを作るときはこれをコピーして書き換えてください
+
+> **移行中の注意**: 従来の人格「ぽとふ」は外部リポジトリへの移行が完了するまで `prompts/` にあります。
+> 従来どおりぽとふで起動するには `PERSONA_DIR=prompts` を設定してください(未設定だとサンプルが起動します)。
 
 ## プロジェクト構成
 
@@ -208,4 +238,5 @@ dotnet test
 
 - 利用者向け運用マニュアル: [docs/manual.md](docs/manual.md)
 - 設計と動作仕様: [docs/architecture.md](docs/architecture.md)
+- ペルソナ外部化(人格の別リポジトリ管理)の設計: [docs/persona-architecture.md](docs/persona-architecture.md)
 - タスクと進捗: [docs/implementation-plan.md](docs/implementation-plan.md)

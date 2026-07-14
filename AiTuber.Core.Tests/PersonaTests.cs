@@ -6,37 +6,41 @@ namespace Medoz.AiTuber.Core.Tests;
 
 public class PersonaTests : IDisposable
 {
-    private readonly string _promptDir;
+    private readonly string _personaDir;
+    private readonly PersonaPackage _package;
 
     public PersonaTests()
     {
-        _promptDir = Path.Combine(Path.GetTempPath(), "aituber-prompts-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(_promptDir);
-        File.WriteAllText(Path.Combine(_promptDir, "character.md"), "あなたはぷる乃です。");
-        File.WriteAllText(Path.Combine(_promptDir, "live_system.md"), "配信モードの指示。");
+        _personaDir = Path.Combine(Path.GetTempPath(), "aituber-persona-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_personaDir);
+        File.WriteAllText(Path.Combine(_personaDir, "persona.json"),
+            """{ "schemaVersion": 1, "name": "ぷる乃", "slug": "puruno", "voice": { "speakerId": 3, "emotionStyles": {} } }""");
+        File.WriteAllText(Path.Combine(_personaDir, "character.md"), "あなたはぷる乃です。");
+        File.WriteAllText(Path.Combine(_personaDir, "live_system.md"), "配信モードの指示。");
+        _package = PersonaPackage.Load(_personaDir);
     }
 
     public void Dispose()
     {
-        if (Directory.Exists(_promptDir))
+        if (Directory.Exists(_personaDir))
         {
-            Directory.Delete(_promptDir, recursive: true);
+            Directory.Delete(_personaDir, recursive: true);
         }
     }
 
     [Fact]
-    public void BuildSystemPrompt_JoinsCharacterAndModeWithSeparator()
+    public void SystemPrompt_JoinsCharacterAndModeWithSeparator()
     {
-        string prompt = Persona.BuildSystemPrompt(_promptDir, "live_system.md");
+        var persona = new Persona(new StubChatClient(), _package, "live_system.md");
 
-        Assert.Equal("あなたはぷる乃です。\n\n---\n\n配信モードの指示。", prompt);
+        Assert.Equal("あなたはぷる乃です。\n\n---\n\n配信モードの指示。", persona.SystemPrompt);
     }
 
     [Fact]
     public async Task GenerateAsync_PassesSystemPromptAndMessages_AndTrimsReply()
     {
         var stub = new StubChatClient { Reply = "  こんにちは!  \n" };
-        var persona = new Persona(stub, _promptDir, "live_system.md");
+        var persona = new Persona(stub, _package, "live_system.md");
         var messages = new List<ChatMessage> { new("user", "やあ") };
 
         string reply = await persona.GenerateAsync(messages, maxTokens: 200);
@@ -51,7 +55,7 @@ public class PersonaTests : IDisposable
     public async Task GenerateWithImageAsync_PassesSystemPromptAndImage_AndTrimsReply()
     {
         var stub = new StubChatClient { Reply = " 実況コメント \n" };
-        var persona = new Persona(stub, _promptDir, "live_system.md");
+        var persona = new Persona(stub, _package, "live_system.md");
         var image = new ImageContent("image/jpeg", "BASE64");
 
         string reply = await persona.GenerateWithImageAsync(image, "画面を実況して", maxTokens: 150);

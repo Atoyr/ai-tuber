@@ -12,6 +12,8 @@ public class CommentaryLoopTests : IDisposable
     {
         _promptDir = Path.Combine(Path.GetTempPath(), "gamecommentary-prompts-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_promptDir);
+        File.WriteAllText(Path.Combine(_promptDir, "persona.json"),
+            """{ "schemaVersion": 1, "name": "ぽとふ", "slug": "potofu", "voice": { "speakerId": 3, "emotionStyles": {} } }""");
         File.WriteAllText(Path.Combine(_promptDir, "character.md"), "あなたはぽとふです。");
         File.WriteAllText(Path.Combine(_promptDir, "game_system.md"), "実況モードの指示。");
     }
@@ -27,7 +29,7 @@ public class CommentaryLoopTests : IDisposable
     private CommentaryLoop CreateLoop(FakeChatClient client, FakeWindowCapture capture,
                                       FakeSpeaker speaker, int historyLimit = 4)
     {
-        var persona = new Persona(client, _promptDir, "game_system.md");
+        var persona = new Persona(client, PersonaPackage.Load(_promptDir), "game_system.md");
         var filter = new ModerationFilter(BannedWords);
         return new CommentaryLoop(capture, persona, filter, speaker, historyLimit, "テスト");
     }

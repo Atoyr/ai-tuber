@@ -7,9 +7,12 @@ namespace Medoz.AiTuber.Core;
 public record AppConfig
 {
     // --- ディレクトリ ---
-    public string PromptDir { get; init; } = "prompts";
+    /// <summary>ペルソナパッケージのディレクトリ (環境変数 PERSONA_DIR。契約は docs/persona-architecture.md)</summary>
+    public string PersonaDir { get; init; } = "personas/default";
     public string DataDir { get; init; } = "data";
-    public string MemoryPath => Path.Combine(DataDir, "memory.json");
+
+    /// <summary>ペルソナごとのメモリ保存先 (slug は persona.json から)</summary>
+    public string MemoryPathFor(string slug) => Path.Combine(DataDir, slug, "memory.json");
 
     // --- LLM ---
     /// <summary>使用する LLM プロバイダ ("claude" | "gemini" | "openai")</summary>
@@ -69,6 +72,12 @@ public record AppConfig
         ["surprised"] = 3, // ノーマル
     };
 
+    /// <summary>VOICEVOX_SPEAKER_ID が環境変数で明示されたか (persona.json より環境変数を優先するため)</summary>
+    public bool SpeakerIdFromEnv { get; init; }
+
+    /// <summary>VOICEVOX_EMOTION_STYLES が環境変数で明示されたか (persona.json より環境変数を優先するため)</summary>
+    public bool EmotionStylesFromEnv { get; init; }
+
     /// <summary>ストリーミング (文単位合成 + 2キューTTS) を使うか。false で従来の一括生成。</summary>
     public bool UseStreaming { get; init; } = true;
 
@@ -112,11 +121,34 @@ public record AppConfig
     /// <summary>禁止ワード (含まれていたら投稿・発話を破棄して作り直し)</summary>
     public IReadOnlyList<string> BannedWords { get; init; } = new[] { "死ね", "殺す", "http://", "@" };
 
+    /// <summary>
+    /// persona.json の値を反映する。優先順位: エンジンのデフォルト値 &lt; persona.json &lt; 環境変数。
+    /// 禁止ワードはエンジン共通セットにペルソナ固有分を追加マージする (共通セットは外せない = 安全の下限)。
+    /// </summary>
+    public AppConfig ApplyPersona(PersonaManifest manifest)
+    {
+        var config = this with
+        {
+            BannedWords = BannedWords.Concat(manifest.BannedWords ?? Enumerable.Empty<string>())
+                                     .Distinct().ToArray(),
+        };
+        if (!SpeakerIdFromEnv && manifest.Voice?.SpeakerId is int speakerId)
+        {
+            config = config with { SpeakerId = speakerId };
+        }
+        if (!EmotionStylesFromEnv && manifest.Voice?.EmotionStyles is { Count: > 0 } styles)
+        {
+            config = config with { EmotionStyleIds = styles };
+        }
+        return config;
+    }
+
     /// <summary>環境変数から設定を読み込む。未設定の項目はデフォルト値のまま。</summary>
     public static AppConfig LoadFromEnvironment()
     {
         return new AppConfig
         {
+            PersonaDir = Env("PERSONA_DIR", "personas/default"),
             LlmProvider = Env("LLM_PROVIDER", "claude"),
             AnthropicApiKey = Env("ANTHROPIC_API_KEY", ""),
             ClaudeModel = Env("CLAUDE_MODEL", "claude-sonnet-4-6"),
@@ -126,6 +158,8 @@ public record AppConfig
             OpenAIModel = Env("OPENAI_MODEL", "gpt-4o"),
             VoicevoxUrl = Env("VOICEVOX_URL", "http://127.0.0.1:50021"),
             SpeakerId = EnvInt("VOICEVOX_SPEAKER_ID", 3),
+            SpeakerIdFromEnv = Environment.GetEnvironmentVariable("VOICEVOX_SPEAKER_ID") is { Length: > 0 },
+            EmotionStylesFromEnv = Environment.GetEnvironmentVariable("VOICEVOX_EMOTION_STYLES") is { Length: > 0 },
             OutputDeviceName = Env("VOICEVOX_OUTPUT_DEVICE", "CABLE Input"),
             YouTubeVideoId = Env("YT_VIDEO_ID", ""),
             YouTubeApiKey = Env("YOUTUBE_API_KEY", ""),

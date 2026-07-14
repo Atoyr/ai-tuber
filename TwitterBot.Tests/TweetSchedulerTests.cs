@@ -16,6 +16,19 @@ public class TweetSchedulerTests
         Assert.Equal(expected, TweetScheduler.InActiveHours(hour, 9, 24));
     }
 
+    // --scheduled (systemd timer 起動) が使う DateTime オーバーロード。時刻の Hour だけで判定する
+    [Theory]
+    [InlineData("2026-07-13T09:00:00", true)]  // 開始時刻ちょうど
+    [InlineData("2026-07-13T23:59:59", true)]  // 終了直前
+    [InlineData("2026-07-13T08:59:59", false)] // 開始前
+    [InlineData("2026-07-14T00:00:00", false)] // 深夜 (24時 = 0時扱い)
+    [InlineData("2026-07-13T03:30:00", false)]
+    public void InActiveHours_DateTime_9To24(string dateTime, bool expected)
+    {
+        var now = DateTime.Parse(dateTime);
+        Assert.Equal(expected, TweetScheduler.InActiveHours(now, 9, 24));
+    }
+
     [Fact]
     public void NextIntervalMinutes_WithinRangeInclusive()
     {

@@ -26,7 +26,8 @@ public class AppConfigTests
         Assert.Equal(800, config.MaxImageWidth);
         Assert.Equal(4, config.CommentaryHistoryLimit);
         Assert.Equal(new[] { "死ね", "殺す", "http://", "@" }, config.BannedWords);
-        Assert.Equal(Path.Combine("data", "memory.json"), config.MemoryPath);
+        Assert.Equal("personas/default", config.PersonaDir);
+        Assert.Equal(Path.Combine("data", "potofu", "memory.json"), config.MemoryPathFor("potofu"));
     }
 
     [Fact]
@@ -168,5 +169,78 @@ public class AppConfigTests
         var config = AppConfig.LoadFromEnvironment();
 
         Assert.Equal(new AppConfig().EmotionStyleIds["joy"], config.EmotionStyleIds["joy"]);
+    }
+
+    [Fact]
+    public void LoadFromEnvironment_ReadsPersonaDir()
+    {
+        try
+        {
+            Environment.SetEnvironmentVariable("PERSONA_DIR", "../ai-tuber-persona-potofu");
+
+            var config = AppConfig.LoadFromEnvironment();
+
+            Assert.Equal("../ai-tuber-persona-potofu", config.PersonaDir);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PERSONA_DIR", null);
+        }
+    }
+
+    private static PersonaManifest Manifest(int? speakerId = 5,
+                                            Dictionary<string, int>? styles = null,
+                                            List<string>? bannedWords = null) => new()
+    {
+        SchemaVersion = 1,
+        Name = "テスト",
+        Slug = "test",
+        Voice = new PersonaVoice { SpeakerId = speakerId, EmotionStyles = styles },
+        BannedWords = bannedWords,
+    };
+
+    [Fact]
+    public void ApplyPersona_UsesPersonaVoice_WhenEnvNotSet()
+    {
+        var config = new AppConfig(); // SpeakerIdFromEnv = false
+
+        var applied = config.ApplyPersona(Manifest(speakerId: 5, styles: new() { ["joy"] = 10 }));
+
+        Assert.Equal(5, applied.SpeakerId);
+        Assert.Equal(10, applied.EmotionStyleIds["joy"]);
+    }
+
+    [Fact]
+    public void ApplyPersona_KeepsEnvValues_WhenEnvSet()
+    {
+        // 優先順位: エンジンデフォルト < persona.json < 環境変数
+        var config = new AppConfig
+        {
+            SpeakerId = 8,
+            SpeakerIdFromEnv = true,
+            EmotionStylesFromEnv = true,
+        };
+
+        var applied = config.ApplyPersona(Manifest(speakerId: 5, styles: new() { ["joy"] = 10 }));
+
+        Assert.Equal(8, applied.SpeakerId);
+        Assert.Equal(new AppConfig().EmotionStyleIds["joy"], applied.EmotionStyleIds["joy"]);
+    }
+
+    [Fact]
+    public void ApplyPersona_KeepsDefaultEmotionStyles_WhenPersonaMapEmpty()
+    {
+        var applied = new AppConfig().ApplyPersona(Manifest(styles: new()));
+
+        Assert.Equal(new AppConfig().EmotionStyleIds, applied.EmotionStyleIds);
+    }
+
+    [Fact]
+    public void ApplyPersona_MergesBannedWords_KeepingEngineSet()
+    {
+        var applied = new AppConfig().ApplyPersona(Manifest(bannedWords: new() { "追加ワード", "死ね" }));
+
+        // エンジン共通セットは外せない + ペルソナ固有分が追加される (重複は1つに)
+        Assert.Equal(new[] { "死ね", "殺す", "http://", "@", "追加ワード" }, applied.BannedWords);
     }
 }

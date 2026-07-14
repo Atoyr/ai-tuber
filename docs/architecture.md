@@ -127,3 +127,11 @@ streaming は Anthropic の SSE (`"stream": true`) を `IAsyncEnumerable<string>
     Helix API(`POST /helix/chat/messages`)なら `user:write:chat`。リフレッシュトークンの更新処理も必要
   - 送信方法: IRC で `PASS oauth:<token>` + 本名 NICK でログインし `PRIVMSG`、もしくは Helix API
   - 設計方針: `ICommentPoster` のような抽象を切り、トークンは環境変数から注入、**dry-run デフォルト**の原則に従う
+
+## TwitterBot の Linux 常時運用
+
+TwitterBot は配信PCとは別のラズパイ / 軽量 Linux VM で常時稼働させる。
+systemd timer(`OnUnitInactiveSec=180min` + `RandomizedDelaySec=180min` = 前回実行から180〜360分後)で
+ランダム間隔を実現し、アプリは `--scheduled`(時間帯チェック付き1回実行)で起動する。
+発行は `linux-arm64` self-contained 単一ファイル、ホストの TZ は Asia/Tokyo 必須。
+memory.json の配信PCとの同期を含む詳細は @docs/twitterbot-linux-deployment.md。

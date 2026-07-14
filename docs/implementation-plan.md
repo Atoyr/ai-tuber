@@ -78,3 +78,35 @@
 - [ ] 実機テスト: `BLOG_DRY_RUN=0` で記事が公開されることを確認
 - 完了条件: `dotnet run --project BlogBot` (dry-run) で記事 markdown が出力され、本番化すると
   https://atoyr.github.io/ai-tuber-blogs/ に記事が載る
+
+## Phase J: TwitterBot の Linux (ラズパイ/VM) 常時運用
+
+設計: @docs/twitterbot-linux-deployment.md。systemd timer でランダム間隔 (180〜360分) を実現する。
+
+- [x] `TwitterBot` に `--scheduled` オプション追加 (時間帯チェック付き1回実行。timer から呼ばれる)
+- [x] CI (GitHub Actions): Windows でビルド+全テスト、Ubuntu で linux-arm64 publish 検証 (.github/workflows/ci.yml)
+- [ ] `dotnet publish -r linux-arm64 --self-contained -p:PublishSingleFile=true` で発行し、実機に配置
+- [ ] `/etc/ai-tuber/twitterbot.env` (TZ=Asia/Tokyo, APIキー, TWEET_DRY_RUN=1) と
+      `twitterbot.service` / `twitterbot.timer` を設置
+- [ ] dry-run で `--once` 手動実行 → timer 発火を数回確認 (時間外スキップ含む)
+- [ ] `TWEET_DRY_RUN=0` で本番化
+- [ ] (任意) Syncthing で `data/` を配信PCと同期し、配信メモをツイートに反映
+- 完了条件: 配信PCを落としていてもラズパイ単独で 9〜24時にランダム投稿され続ける
+
+## Phase K: ペルソナ外部化
+
+設計: @docs/persona-architecture.md。人格を外部ディレクトリ/別リポジトリに切り出し、
+このリポジトリはエンジンに徹する。
+
+- [x] `AiTuber.Core/PersonaPackage.cs` — persona.json + character.md のロードと検証(fail fast)+ ユニットテスト
+- [x] `personas/default/` 同梱サンプルペルソナ(中立キャラ + persona.json)
+- [x] `AppConfig`: `PromptDir` → `PersonaDir`(環境変数 `PERSONA_DIR`)、SpeakerId/EmotionStyleIds/BannedWords の優先順位を「デフォルト < persona.json < 環境変数」に
+- [x] 各アプリ(Live / TwitterBot / GameCommentary / BlogBot)を PersonaPackage 経由に切替。表示名も persona.json から
+      (Chat はプロンプト手入力の疎通確認アプリのためペルソナを使わない)
+- [x] `SharedMemory` の保存先を `data/<slug>/memory.json` に(既存 `data/memory.json` は `data/potofu/` へ移動済み)
+- [x] 移行措置: `prompts/persona.json`(ぽとふのマニフェスト)を追加し、`PERSONA_DIR=prompts` で従来人格のまま動くことを確認。
+      **`PERSONA_DIR` 未設定時は同梱サンプルが起動する**(従来のぽとふではない)点に注意
+- [ ] `Atoyr/ai-tuber-persona-potofu`(private)を作成し現 `prompts/` 一式(persona.json 含む)を移動、
+      sibling clone + `PERSONA_DIR=../ai-tuber-persona-potofu` で従来と同一動作を確認
+- [ ] `prompts/` を削除し、CLAUDE.md / architecture.md の「prompts/character.md が唯一の真実」関連記述を更新
+- 完了条件: `PERSONA_DIR` の向け替えだけで別人格として `dotnet run --project Live -- --console` が動く

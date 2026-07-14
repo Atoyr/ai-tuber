@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "name": "ぽとふ",
+  "slug": "potofu",
+  "voice": {
+    "speakerId": 3,
+    "emotionStyles": { "joy": 1, "fun": 3, "sad": 22, "angry": 7, "surprised": 3 }
+  },
+  "blog": { "repoUrl": "https://github.com/Atoyr/ai-tuber-blogs" }
+}

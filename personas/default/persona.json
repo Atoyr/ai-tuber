@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "name": "サンプル",
+  "slug": "default",
+  "voice": {
+    "speakerId": 3,
+    "emotionStyles": { "joy": 1, "fun": 3, "sad": 22, "angry": 7, "surprised": 3 }
+  }
+}

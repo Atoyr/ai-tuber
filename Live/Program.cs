@@ -133,14 +133,28 @@ if (string.IsNullOrEmpty(config.LlmApiKey))
     return 1;
 }
 
-// キャラの表示名はコンソールログ用ラベル (人格そのものは prompts/character.md が唯一の真実)
-string displayName = Environment.GetEnvironmentVariable("CHARACTER_NAME") is { Length: > 0 } name ? name : "ぽとふ";
+// ペルソナパッケージ (人格・声・追加禁止ワード) をロードする。不足があればここで fail fast
+PersonaPackage personaPackage;
+try
+{
+    personaPackage = PersonaPackage.Load(config.PersonaDir, "live_system.md");
+}
+catch (PersonaLoadException ex)
+{
+    Console.WriteLine(ex.Message);
+    return 1;
+}
+config = config.ApplyPersona(personaPackage.Manifest);
+Console.WriteLine($"ペルソナ: {personaPackage.Manifest.Name} ({config.PersonaDir})");
+
+// キャラの表示名は persona.json の name (環境変数 CHARACTER_NAME で上書き可)
+string displayName = Environment.GetEnvironmentVariable("CHARACTER_NAME") is { Length: > 0 } name ? name : personaPackage.Manifest.Name;
 
 IChatClient chatClient = LLMClientFactory.CreateChatClient(config.LlmProvider, config.LlmApiKey, config.LlmModel);
 Console.WriteLine($"LLM: {config.LlmProvider} ({config.LlmModel})");
-var persona = new Persona(chatClient, config.PromptDir, "live_system.md");
+var persona = new Persona(chatClient, personaPackage, "live_system.md");
 var filter = new ModerationFilter(config.BannedWords);
-var memory = new SharedMemory(config.MemoryPath, config.RecentTweetsKeep);
+var memory = new SharedMemory(config.MemoryPathFor(personaPackage.Manifest.Slug), config.RecentTweetsKeep);
 var voicevox = new VoicevoxClient(config.VoicevoxUrl);
 
 string? resolvedDeviceName = ResolveOutputDevice(config.OutputDeviceName, selectDevice);
