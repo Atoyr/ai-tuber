@@ -110,3 +110,34 @@
       sibling clone + `PERSONA_DIR=../ai-tuber-persona-potofu` で従来と同一動作を確認
 - [ ] `prompts/` を削除し、CLAUDE.md / architecture.md の「prompts/character.md が唯一の真実」関連記述を更新
 - 完了条件: `PERSONA_DIR` の向け替えだけで別人格として `dotnet run --project Live -- --console` が動く
+
+## Phase L: StageCheck(実機画面・音声の AI 検証ツール)
+
+設計: @docs/e2e-test-architecture.md。VB-CABLE → PuruPuruPNGTuber → OBS の最終段を
+人の目・耳の代わりに Claude Code が確認できるようにするローカル専用ツール。外部投稿・配信開始はしない。
+
+- [ ] `StageCheck/` プロジェクト作成(console, `net10.0-windows`, `Medoz.StageCheck`)。`dotnet sln add`。
+      `GameCommentary`(WindowCapture 再利用)と `Voicevox` を参照
+- [ ] `--list-windows` / `--snapshot "<タイトル片>"...` / `--screen` — キャプチャを
+      `artifacts/stagecheck/<timestamp>/` に JPEG 保存。`artifacts/` を .gitignore に追加
+- [ ] `MotionMetrics` — グレースケール縮小フレームの差分計算と合否判定(pure static)+ ユニットテスト
+- [ ] `--lipsync "<タイトル片>" [--text ...]` — 無音Nフレーム → VOICEVOX 発話中Nフレーム →
+      差分比較で口パク判定。report.json 出力、exit code で合否
+- [ ] `--audio [--device ...]` — NAudio `WasapiLoopbackCapture` で再生デバイスの RMS を測定し、
+      音が実際に CABLE Input へ流れたことを検証。report.json 出力
+- 完了条件: Claude Code が「画面表示をテストして」の指示だけで StageCheck を実行し、
+  report.json と JPEG を読んで口パク・レイアウトを合否判定できる
+
+## Phase M: 配信リハーサルと本番初配信(実機 E2E)
+
+設計: @docs/e2e-test-architecture.md の「最終テスト計画」。各 Stage は前段の合格が前提。
+Stage 4 は Phase K 完了後(PERSONA_DIR がぽとふリポジトリを指す状態)で行う。
+
+- [ ] Stage 0: セルフチェック(build / test / `--list-devices` に CABLE Input / VOICEVOX 応答 / ペルソナロード)
+- [ ] Stage 1: StageCheck `--audio` と `--lipsync` が pass(音声経路と口パクの全自動検証)
+- [ ] Stage 2: `Live -- --console` フルループ(応答→発話→口パク、Ctrl+C で配信メモ保存まで)+ 並行 `--snapshot` で画面確認
+- [ ] Stage 3a: Twitch 実チャンネルでチャット取得リハーサル(= Phase E の Twitch 残項目。消化したら E 側にも [x])
+- [ ] Stage 3b: YouTube 限定公開枠でコメント取得リハーサル(= Phase E の YouTube 残項目)
+- [ ] Stage 3c: OBS から帯域テストモード(Twitch)or 限定公開(YouTube)で実際に配信し、視聴側で映像・音声・口パクを確認
+- [ ] Stage 4: 本番初配信(短時間)→ 配信メモ保存 → TwitterBot dry-run への反映確認
+- 完了条件: 事故なく 1 枠完走し、manual.md「未実施の手動テスト」の Live 関連項目がすべて消える
