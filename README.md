@@ -24,17 +24,30 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
   X への投稿ネタとして再利用できます
 - **人格を差し替えられる**: 人格は「ペルソナパッケージ」として外部ディレクトリ/別リポジトリで管理し、
   環境変数 `PERSONA_DIR` の向け替えだけで別キャラとして起動できます(後述)
+- **YouTube Live / Twitch のコメント取得に対応**: `--youtube <videoId|URL>` または
+  `--twitch <channel|URL>` で実配信のコメントに応答できます(Twitch は API キー不要)
 
-### 2. X(Twitter)への投稿(一部実装済み)
+### 2. X(Twitter)への投稿(実装済み)
 
-- **PostX**: コンソールから入力したテキストを X に投稿するツール(実装済み)
+- **PostX**: コンソールから入力したテキストを X に投稿するツール
 - **TwitterBot**: 配信メモをもとに Claude が自律的にツイート文を生成し、
-  ランダムな間隔で投稿する機能(未実装 / Phase F)
+  9〜24時の間に 180〜360 分のランダム間隔で投稿します。既定は dry-run(コンソール出力のみ)で、
+  `TWEET_DRY_RUN=0` を設定したときだけ実投稿します
 
-### 3. ゲーム実況(未実装 / Phase G)
+### 3. ゲーム実況(実装済み)
 
-ゲームのウィンドウを一定間隔でキャプチャし、Claude の Vision 機能で画面を認識して
+ゲームのウィンドウを 12 秒間隔でキャプチャし、Claude の Vision 機能で画面を認識して
 実況コメントを生成・発話します。
+
+```
+dotnet run --project GameCommentary -- --window "<ウィンドウタイトルの一部>"
+```
+
+### 4. ブログ記事の自動投稿(実装済み)
+
+配信メモをもとに Claude が記事を生成し、別リポジトリ
+[Atoyr/ai-tuber-blogs](https://github.com/Atoyr/ai-tuber-blogs)(GitHub Pages)へ公開します。
+既定は dry-run で、`BLOG_DRY_RUN=0` のときだけ commit & push します。
 
 ## 実装状況
 
@@ -45,10 +58,12 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
 | キャラクター人格・記憶・禁止ワードフィルタの共通基盤 | 実装済み |
 | Live 配信本体(コンソール入力でのローカルテスト) | 実装済み |
 | X への投稿機能(手動投稿) | 実装済み |
-| YouTube Live のコメント自動取得 | 未実装 |
-| X への自律投稿(TwitterBot) | 未実装 |
-| ゲーム実況(Vision) | 未実装 |
-| ブログへの投稿機能 | 未実装 |
+| YouTube Live のコメント自動取得 | 実装済み(実配信での動作テストは未実施) |
+| Twitch チャットの自動取得(API キー不要) | 実装済み(実配信での動作テストは未実施) |
+| X への自律投稿(TwitterBot) | 実装済み(dry-run 既定) |
+| ゲーム実況(Vision) | 実装済み |
+| ブログへの投稿機能(BlogBot) | 実装済み(dry-run 既定。公開先の GitHub Pages 設定が残) |
+| ストリーミング発話・感情タグ・コメント優先度(品質向上) | 実装済み |
 
 詳細な進捗は [docs/implementation-plan.md](docs/implementation-plan.md) を参照してください。
 
@@ -92,6 +107,13 @@ dotnet run --project Live -- --console
 コメントを入力すると、キャラクターが応答して喋ります。
 45秒放置すると自分からフリートークを始めます。
 `Ctrl+C` で終了すると、その日の配信内容を要約して `data/<ペルソナslug>/memory.json` に保存します。
+
+実配信のコメントを取得する場合:
+
+```
+dotnet run --project Live -- --youtube <videoId|URL>   # YouTube Live (要 YOUTUBE_API_KEY)
+dotnet run --project Live -- --twitch <channel|URL>    # Twitch (匿名接続 / APIキー不要)
+```
 
 #### 使用する LLM の切り替え
 
@@ -216,8 +238,11 @@ dotnet run --project Live -- --console
 | プロジェクト | 説明 |
 |---|---|
 | `AiTuber.Core/` | 人格・記憶・禁止ワードフィルタ・設定の共通基盤 |
-| `Live/` | 配信本体(コメント取得 → 応答 → 発話のメインループ) |
-| `Voicevox/` | VOICEVOX クライアントと NAudio による音声再生 |
+| `Live/` | 配信本体(コメント取得 → 応答 → 発話のメインループ。コンソール / YouTube / Twitch) |
+| `GameCommentary/` | ゲーム実況(ウィンドウキャプチャ → Vision 実況 → 発話。Windows 専用) |
+| `TwitterBot/` | X への自律投稿ボット(dry-run 既定) |
+| `BlogBot/` | ブログ記事の自動生成・公開(dry-run 既定) |
+| `Voicevox/` | VOICEVOX クライアントと NAudio による音声再生・TTS パイプライン・感情タグ |
 | `MultiLLMClient/` | Claude / Gemini / OpenAI を抽象化した LLM クライアント |
 | `X/` | X API v2 クライアント |
 | `Setup/` | 初期セットアップ用 WPF アプリ (Windows 専用) |
@@ -232,7 +257,8 @@ dotnet build
 dotnet test
 ```
 
-テストプロジェクトは `AiTuber.Core.Tests` / `Live.Tests` / `MultiLLMClient.Tests` / `Voicevox.Tests` の4つです。
+テストプロジェクトは `AiTuber.Core.Tests` / `Live.Tests` / `MultiLLMClient.Tests` / `Voicevox.Tests` /
+`TwitterBot.Tests` / `GameCommentary.Tests` / `BlogBot.Tests` の7つです。
 
 ## ドキュメント
 
