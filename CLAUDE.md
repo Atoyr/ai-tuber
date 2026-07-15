@@ -55,6 +55,7 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)。
 ## ドキュメント
 
 - 設計と動作仕様: @docs/architecture.md
+- Studio(配信コントロールパネル / ローカル Web UI)の設計: @docs/studio-architecture.md
 - ペルソナ外部化(人格の別リポジトリ管理)の設計: @docs/persona-architecture.md
 - 配信 E2E テストと画面表示の AI 検証(StageCheck)の設計: @docs/e2e-test-architecture.md
 - タスクと進捗: @docs/implementation-plan.md (完了したら [x] を付けて更新する)
