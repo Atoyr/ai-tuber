@@ -22,7 +22,9 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)。
 - `AiTuber.Core/` — Persona / Memory / ModerationFilter
 - `Live/`, `GameCommentary/`, `TwitterBot/`, `BlogBot/` — 各モードの実行アプリ
   (ブログの設計と公開先リポジトリは @docs/blog-architecture.md)
-- `prompts/` — キャラ人格・モード別プロンプト(Markdown)
+- `personas/default/` — 同梱サンプルペルソナ(人格・モード別プロンプト Markdown + persona.json)。
+  キャラ人格は外部の**ペルソナリポジトリ**で管理し `PERSONA_DIR` で差し替える(詳細は @docs/persona-architecture.md)。
+  現在の人格「ぽとふ」は private リポジトリ [Atoyr/ai-tuber-potofu](https://github.com/Atoyr/ai-tuber-potofu) にある
 
 ## ビルド・実行
 
@@ -34,7 +36,7 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)。
 
 ## 必ず守るルール
 
-- **キャラ人格は `prompts/character.md` が唯一の真実**。人格・口調をC#コードにハードコードしない。モード別指示は `prompts/live_system.md` / `tweet_system.md` に分離
+- **キャラ人格は `PERSONA_DIR` の `character.md` が唯一の真実**(ペルソナリポジトリで管理)。人格・口調をC#コードにハードコードしない。モード別指示は同ディレクトリの `live_system.md` / `tweet_system.md` に分離
 - **外部投稿・発話を伴うモードは dry-run がデフォルト**。環境変数で明示的に本番化する設計にする
 - **禁止ワードフィルタ(ModerationFilter)は Live / Twitter / GameCommentary で共通のクラスを使う**
 - プラットフォーム依存部(コメント取得元、投稿先)はインターフェースで抽象化する(例: `ICommentSource`)

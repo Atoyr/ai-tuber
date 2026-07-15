@@ -207,7 +207,7 @@ dotnet run --project Chat
 dotnet run --project Live -- --console
 
 # 外部のペルソナリポジトリを指定して起動する
-$env:PERSONA_DIR = "..\ai-tuber-persona-potofu"
+$env:PERSONA_DIR = "..\ai-tuber-potofu"
 dotnet run --project Live -- --console
 ```
 
@@ -230,8 +230,9 @@ dotnet run --project Live -- --console
 - 同梱の [personas/default/](personas/default/) はフォーマットの実例を兼ねたサンプルです。
   新しいペルソナを作るときはこれをコピーして書き換えてください
 
-> **移行中の注意**: 従来の人格「ぽとふ」は外部リポジトリへの移行が完了するまで `prompts/` にあります。
-> 従来どおりぽとふで起動するには `PERSONA_DIR=prompts` を設定してください(未設定だとサンプルが起動します)。
+> **ぽとふで起動する場合**: 従来の人格「ぽとふ」は private リポジトリ
+> [Atoyr/ai-tuber-potofu](https://github.com/Atoyr/ai-tuber-potofu) に移動しました。sibling に clone し
+> `PERSONA_DIR=../ai-tuber-potofu` を設定してください(未設定だと同梱サンプルが起動します)。
 
 ## プロジェクト構成
 

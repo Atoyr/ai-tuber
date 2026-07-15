@@ -9,7 +9,7 @@ Raspberry Pi または軽量 Linux VM 上で動かし、ランダムな時間 (1
 
 - `TwitterBot` の依存は `AiTuber.Core` / `MultiLLMClient` / `Medoz.X` のみで、
   すべて HttpClient + System.Text.Json ベース。**Windows 依存 (NAudio / Win32) は無く、そのまま Linux で動く**
-- 必要なランタイムファイル: 実行バイナリ + `prompts/character.md` + `prompts/tweet_system.md` + `data/` (memory.json)
+- 必要なランタイムファイル: 実行バイナリ + ペルソナディレクトリ (`character.md` + `tweet_system.md` + `persona.json`。`PERSONA_DIR` で指す) + `data/` (memory.json)
 - `TweetScheduler.InActiveHours` は `DateTime.Now` を使うため、**ホストのタイムゾーンが Asia/Tokyo であることが必須**
   (UTC のままの VM だと 9〜24時判定がずれる)
 
@@ -78,17 +78,18 @@ dotnet publish TwitterBot -c Release -r linux-arm64 --self-contained -p:PublishS
 ```
 /opt/ai-tuber/
 ├── TwitterBot              # 発行した単一バイナリ (chmod +x)
-├── prompts/
+├── persona/                # ペルソナディレクトリ (ai-tuber-potofu を clone/転送。PERSONA_DIR で指す)
+│   ├── persona.json
 │   ├── character.md
 │   └── tweet_system.md
 └── data/
     └── memory.json         # 無ければ初回に自動生成される
 ```
 
-`AppConfig` の `PromptDir` / `DataDir` は相対パスなので、systemd の `WorkingDirectory` を
-`/opt/ai-tuber` にすることで解決する。
+`AppConfig` の `DataDir` は相対パスなので、systemd の `WorkingDirectory` を
+`/opt/ai-tuber` にすることで解決する。ペルソナは env の `PERSONA_DIR=/opt/ai-tuber/persona` で指す。
 
-転送は `scp -r publish/twitterbot/* prompts pi@raspi:/opt/ai-tuber/` 等。
+転送は `scp -r publish/twitterbot/* pi@raspi:/opt/ai-tuber/` + ペルソナリポジトリを別途 clone/転送。
 更新時も同じコマンドで上書きすればよい (timer 方式なら実行中プロセスがいない時間がほとんどなので停止不要)。
 
 ### 環境変数 (シークレット)
@@ -97,6 +98,7 @@ dotnet publish TwitterBot -c Release -r linux-arm64 --self-contained -p:PublishS
 
 ```ini
 TZ=Asia/Tokyo
+PERSONA_DIR=/opt/ai-tuber/persona
 LLM_PROVIDER=claude
 ANTHROPIC_API_KEY=sk-ant-...
 X_API_KEY=...

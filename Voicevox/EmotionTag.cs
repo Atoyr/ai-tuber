@@ -7,7 +7,7 @@ public readonly record struct EmotionParseResult(string Emotion, string Text);
 
 /// <summary>
 /// 発話テキスト先頭の感情タグ (例: <c>[joy]</c>) をパースして本文と分離する純粋クラス (Phase H)。
-/// タグ規約は prompts/character.md に定義。タグは本文から除去され、合成には本文のみを使う。
+/// タグ規約はペルソナの character.md ($PERSONA_DIR) に定義。タグは本文から除去され、合成には本文のみを使う。
 /// </summary>
 public static partial class EmotionTagParser
 {

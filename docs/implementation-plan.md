@@ -106,9 +106,9 @@
 - [x] `SharedMemory` の保存先を `data/<slug>/memory.json` に(既存 `data/memory.json` は `data/potofu/` へ移動済み)
 - [x] 移行措置: `prompts/persona.json`(ぽとふのマニフェスト)を追加し、`PERSONA_DIR=prompts` で従来人格のまま動くことを確認。
       **`PERSONA_DIR` 未設定時は同梱サンプルが起動する**(従来のぽとふではない)点に注意
-- [ ] `Atoyr/ai-tuber-persona-potofu`(private)を作成し現 `prompts/` 一式(persona.json 含む)を移動、
-      sibling clone + `PERSONA_DIR=../ai-tuber-persona-potofu` で従来と同一動作を確認
-- [ ] `prompts/` を削除し、CLAUDE.md / architecture.md の「prompts/character.md が唯一の真実」関連記述を更新
+- [x] `Atoyr/ai-tuber-potofu`(private)を作成し現 `prompts/` 一式(persona.json 含む)を移動、
+      sibling clone + `PERSONA_DIR=../ai-tuber-potofu` で従来と同一動作を確認(TwitterBot でロード確認済み)
+- [x] `prompts/` を削除し、CLAUDE.md / architecture.md の「prompts/character.md が唯一の真実」関連記述を更新
 - 完了条件: `PERSONA_DIR` の向け替えだけで別人格として `dotnet run --project Live -- --console` が動く
 
 ## Phase L: StageCheck(実機画面・音声の AI 検証ツール)
