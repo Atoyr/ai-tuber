@@ -64,6 +64,7 @@ dotnet run --project GameCommentary -- --window "<ウィンドウタイトルの
 | ゲーム実況(Vision) | 実装済み |
 | ブログへの投稿機能(BlogBot) | 実装済み(dry-run 既定。公開先の GitHub Pages 設定が残) |
 | ストリーミング発話・感情タグ・コメント優先度(品質向上) | 実装済み |
+| Studio 配信コントロールパネル(ローカル Web UI) | 実装済み(実機での通し確認は未実施) |
 
 詳細な進捗は [docs/implementation-plan.md](docs/implementation-plan.md) を参照してください。
 
@@ -157,6 +158,19 @@ dotnet run --project Live -- --console --select-device         # 起動時に対
 | `VOICEVOX_SPEAKER_ID` | (persona.json の値) | 話者 ID の上書き(`GET /speakers` で確認できます) |
 | `VOICEVOX_OUTPUT_DEVICE` | `CABLE Input` | 音声の出力先デバイス名(部分一致 / VB-CABLE 以外の仮想デバイスも指定可) |
 | `CHARACTER_NAME` | (persona.json の値) | コンソールに表示するキャラ名の上書き |
+
+### Studio - 配信コントロールパネル (ローカル Web UI)
+
+会話ログの閲覧・テストコメントの注入・設定変更・配信の開始/停止・
+VOICEVOX / PuruPuruPNGTuber の起動をブラウザから行えます(localhost 限定・外部投稿なし)。
+
+```
+dotnet run --project Studio -- --open   # http://127.0.0.1:5100 を既定ブラウザで開く
+```
+
+UI から VOICEVOX / PuruPuruPNGTuber を起動する場合は `VOICEVOX_EXE_PATH` /
+`PURUPURU_EXE_PATH` を設定します(未設定でも手動起動したアプリを自動検出します)。
+詳細は [docs/studio-usage.md](docs/studio-usage.md) を参照してください。
 
 ### Chat - LLM の疎通確認
 
