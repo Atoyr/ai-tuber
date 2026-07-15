@@ -1,4 +1,3 @@
-using System.Text;
 using Medoz.AiTuber.Core;
 using Medoz.Live;
 using Medoz.MultiLLMClient;
@@ -166,9 +165,6 @@ using var audioPlayer = new AudioPlayer(resolvedDeviceName);
 Console.WriteLine($"出力デバイス: {audioPlayer.DeviceName}");
 
 // Phase H: 文単位ストリーミング + 2キューTTS + 感情タグ + コメント選択
-var styleMap = new EmotionStyleMap(config.SpeakerId, config.EmotionStyleIds);
-var ttsPipeline = new TtsPipeline(new VoicevoxSynthesizer(voicevox), new AudioPlayerSink(audioPlayer));
-var commentSelector = new CommentSelector();
 Console.WriteLine(config.UseStreaming ? "発話: ストリーミング (文単位・2キューTTS)" : "発話: 一括生成 (--no-stream)");
 
 using var cts = new CancellationTokenSource();
@@ -178,118 +174,48 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-using ICommentSource commentSource = twitchMode
+ICommentSource commentSource = twitchMode
     ? new TwitchCommentSource(twitchChannelArg!)
     : youtubeMode
         ? new YouTubeCommentSource(videoId, config.YouTubeApiKey)
         : new ConsoleCommentSource();
-commentSource.Start(cts.Token);
 
-var history = new List<ChatMessage>();   // Claudeに渡す会話履歴
-var topicsLog = new List<string>();      // 配信メモ用の発話ログ
-var lastActivity = DateTime.UtcNow;
-
-Console.WriteLine("=== 配信ループ開始 (Ctrl+Cで終了) ===");
-try
+// 配信ループ本体は LiveSession に集約 (CLI と Studio で共用)。
+// ここは「イベント → コンソール出力」の薄い CLI として従来の表示・体験を維持する。
+var options = new LiveSessionOptions
 {
-    while (!cts.Token.IsCancellationRequested)
+    CommentBatchSec = config.CommentBatchSec,
+    FreetalkAfterSec = config.FreetalkAfterSec,
+    SpeakerId = config.SpeakerId,
+    EmotionStyleIds = config.EmotionStyleIds,
+};
+await using var session = new LiveSession(
+    options, commentSource, persona, filter, memory, voicevox, audioPlayer,
+    config.HistoryTurns, config.UseStreaming);
+
+session.EventRaised += liveEvent =>
+{
+    switch (liveEvent)
     {
-        await Task.Delay(TimeSpan.FromSeconds(config.CommentBatchSec), cts.Token);
-
-        // 溜まっているコメントを広めに拾い、優先度 (初見・質問優先) で最大5件を選ぶ
-        var drained = commentSource.Drain(50);
-        var comments = commentSelector.Select(drained, 5);
-        string userMessage;
-        if (comments.Count > 0)
-        {
-            userMessage = LiveMessages.BuildUserMessage(comments);
-            lastActivity = DateTime.UtcNow;
-        }
-        else if ((DateTime.UtcNow - lastActivity).TotalSeconds > config.FreetalkAfterSec)
-        {
-            userMessage = LiveMessages.FreetalkPrompt;
-            lastActivity = DateTime.UtcNow;
-        }
-        else
-        {
-            continue;
-        }
-
-        history.Add(new ChatMessage("user", userMessage));
-        LiveMessages.TrimHistory(history, config.HistoryTurns);
-
-        string? reply;
-        if (config.UseStreaming)
-        {
-            // ストリーミング: トークン → 文分割 → 文ごとにフィルタ → 感情タグ分離 → 2キューで合成/再生を並行化
-            var spoken = new StringBuilder();
-            var segments = LiveSpeech.ToSegmentsAsync(
-                persona.GenerateStreamAsync(history, maxTokens: 200, cts.Token),
-                filter, styleMap, spoken, cts.Token);
-            try
-            {
-                await ttsPipeline.RunAsync(segments, cts.Token);
-            }
-            catch (FilterViolationException ex)
-            {
-                // フィルタ違反時: 応答を破棄し、そのターンの履歴も破棄して次へ (既存仕様に準拠)
-                Console.WriteLine($"[skip] {ex.Message}");
-                history.RemoveAt(history.Count - 1);
-                continue;
-            }
-            reply = spoken.ToString();
-            if (reply.Length == 0)
-            {
-                // 発話内容が無かった (タグのみ等): 履歴を汚さず次へ
-                history.RemoveAt(history.Count - 1);
-                continue;
-            }
-        }
-        else
-        {
-            // 旧経路: 一括生成 → フィルタ → 合成 → 再生
-            reply = await persona.GenerateAsync(history, maxTokens: 200, cts.Token);
-            if (!filter.IsSafe(reply))
-            {
-                Console.WriteLine($"[skip] フィルタに掛かった応答: {reply}");
-                history.RemoveAt(history.Count - 1);
-                continue;
-            }
-            byte[] wav = await voicevox.SynthesizeAsync(reply, config.SpeakerId, cts.Token);
-            await audioPlayer.PlayWavAsync(wav, cts.Token);
-        }
-
-        history.Add(new ChatMessage("assistant", reply));
-        topicsLog.Add(reply);
-        Console.WriteLine($"{displayName}: {reply}");
+        case SessionStateChanged { State: SessionState.Running }:
+            Console.WriteLine("=== 配信ループ開始 (Ctrl+Cで終了) ===");
+            break;
+        case ReplySpoken spoken:
+            Console.WriteLine($"{displayName}: {spoken.Text}");
+            break;
+        case ReplySkipped skipped:
+            Console.WriteLine($"[skip] {skipped.Reason}");
+            break;
+        case StreamNoteSaved note:
+            Console.WriteLine($"配信メモ保存: {note.Summary}");
+            break;
+        case SessionStateChanged { State: SessionState.Stopped or SessionState.Faulted }:
+            Console.WriteLine("配信ループ終了");
+            break;
     }
-}
-catch (OperationCanceledException)
-{
-    // Ctrl+C による正常終了
-}
-finally
-{
-    // 配信メモを生成してTwitterボットと共有 (発話ログ末尾50件を要約、memory.json に保存)
-    if (topicsLog.Count > 0)
-    {
-        var summaryRequest = new List<ChatMessage>
-        {
-            new("user", LiveMessages.BuildSummaryRequest(topicsLog)),
-        };
-        try
-        {
-            string summary = await persona.GenerateAsync(summaryRequest, maxTokens: 150, CancellationToken.None);
-            memory.AddStreamNote(summary);
-            Console.WriteLine($"配信メモ保存: {summary}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"配信メモ生成失敗: {ex.Message}");
-        }
-    }
-    Console.WriteLine("配信ループ終了");
-}
+};
+
+await session.RunAsync(cts.Token);
 
 return 0;
 

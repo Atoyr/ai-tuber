@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AITuber Studio</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="app-header">
+  <div class="header-left">
+    <span class="persona-name" id="persona-name">(ペルソナ未取得)</span>
+    <div class="badges">
+      <span class="badge state-unknown" id="badge-voicevox" title="">VOICEVOX: -</span>
+      <span class="badge state-unknown" id="badge-purupuru" title="">PuruPuru: -</span>
+      <span class="badge state-unknown" id="badge-live" title="">Live: -</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="conn-indicator" id="conn-indicator">
+      <span class="conn-dot" id="conn-dot"></span>
+      <span id="conn-text">接続中...</span>
+    </span>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="log-column">
+    <div class="panel log-panel">
+      <div class="panel-title-row">
+        <h2>会話ログ</h2>
+        <button type="button" id="jump-latest-btn" class="jump-latest-btn hidden">最新へ ↓</button>
+      </div>
+      <div class="log-timeline" id="log-timeline"></div>
+      <form class="comment-form" id="comment-form">
+        <input type="text" id="comment-author" placeholder="author" value="テスト" autocomplete="off">
+        <input type="text" id="comment-text" placeholder="コメントを入力..." autocomplete="off">
+        <button type="submit">送信</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="side-column">
+    <div class="panel">
+      <h2>起動パネル</h2>
+      <button type="button" id="start-all-btn" class="btn btn-primary full-width">まとめて起動</button>
+      <div class="app-row">
+        <span class="app-row-label">VOICEVOX</span>
+        <div class="app-row-actions">
+          <button type="button" id="voicevox-start-btn" class="btn">起動</button>
+          <button type="button" id="voicevox-stop-btn" class="btn btn-danger">停止</button>
+        </div>
+      </div>
+      <div class="app-row">
+        <span class="app-row-label">PuruPuru</span>
+        <div class="app-row-actions">
+          <button type="button" id="purupuru-start-btn" class="btn">起動</button>
+          <button type="button" id="purupuru-stop-btn" class="btn btn-danger">停止</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>配信パネル</h2>
+      <div class="field-row">
+        <label for="live-source">ソース</label>
+        <select id="live-source">
+          <option value="manual">manual</option>
+          <option value="twitch">twitch</option>
+          <option value="youtube">youtube</option>
+        </select>
+      </div>
+      <div class="field-row" id="live-target-row">
+        <label for="live-target">target</label>
+        <input type="text" id="live-target" placeholder="チャンネル名 / videoId">
+      </div>
+      <div class="live-actions">
+        <button type="button" id="live-start-btn" class="btn btn-primary">配信開始</button>
+        <button type="button" id="live-stop-btn" class="btn btn-danger">配信停止</button>
+      </div>
+      <div class="live-info" id="live-info"></div>
+    </div>
+
+    <div class="panel">
+      <h2>設定パネル</h2>
+
+      <h3 class="settings-group-title">即時反映 <span class="tag-immediate">即時反映</span></h3>
+      <div class="field-row">
+        <label for="setting-freetalk-after-sec">フリートーク秒数</label>
+        <input type="number" id="setting-freetalk-after-sec" min="1" step="1">
+      </div>
+      <div class="field-row">
+        <label for="setting-comment-batch-sec">コメントバッチ秒数</label>
+        <input type="number" id="setting-comment-batch-sec" min="1" step="1">
+      </div>
+      <div class="field-row checkbox-row">
+        <label for="setting-freetalk-enabled">フリートークON/OFF</label>
+        <input type="checkbox" id="setting-freetalk-enabled">
+      </div>
+      <div class="field-row">
+        <label for="setting-speaker-id">話者ID</label>
+        <input type="number" id="setting-speaker-id" min="0" step="1">
+      </div>
+      <div class="field-row checkbox-row">
+        <label for="setting-paused">一時停止</label>
+        <input type="checkbox" id="setting-paused">
+      </div>
+
+      <h3 class="settings-group-title">次回セッションから <span class="tag-next">次回セッションから</span></h3>
+      <div class="field-row">
+        <label for="setting-output-device">出力デバイス</label>
+        <select id="setting-output-device"></select>
+      </div>
+      <div class="field-row">
+        <label for="setting-llm-provider">LLMプロバイダ</label>
+        <input type="text" id="setting-llm-provider">
+      </div>
+      <div class="field-row">
+        <label for="setting-llm-model">LLMモデル</label>
+        <input type="text" id="setting-llm-model">
+      </div>
+      <div class="field-row">
+        <label for="setting-persona-dir">PERSONA_DIR</label>
+        <input type="text" id="setting-persona-dir">
+      </div>
+
+      <h3 class="settings-group-title">シークレット</h3>
+      <div class="secrets-list" id="secrets-list"></div>
+      <p class="secrets-note">変更は Setup ツールで行ってください(ここでは表示のみ)</p>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Medoz.Studio</RootNamespace>
+    <!--
+      dotnet run (Web SDK) は既定で作業ディレクトリをプロジェクトディレクトリにするが、
+      data/ や personas/ の相対パス解決を CLI (Live) と揃えるためリポジトリルートで実行する。
+      wwwroot は出力ディレクトリへコピーし AppContext.BaseDirectory 基準で解決する (Program.cs 参照)。
+    -->
+    <RunWorkingDirectory>$(MSBuildProjectDirectory)\..</RunWorkingDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Live\Live.csproj" />
+    <ProjectReference Include="..\AiTuber.Core\Medoz.AiTuber.Core.csproj" />
+    <ProjectReference Include="..\Voicevox\Medoz.Voicevox.csproj" />
+    <ProjectReference Include="..\MultiLLMClient\Medoz.MultiLLMClient.csproj" />
+  </ItemGroup>
+
+</Project>
