@@ -17,13 +17,19 @@ public class CommentaryLoop
     private readonly ISpeaker _speaker;
     private readonly int _historyLimit;
     private readonly string _displayName;
+    private readonly Action<string> _log;
     private readonly List<string> _history = new();
 
     // Vision に渡す画像のメディアタイプ (WindowCapture は JPEG を返す)
     private const string ImageMediaType = "image/jpeg";
 
+    /// <param name="log">
+    /// [error] / [skip] の診断ログの出力先。省略時は Console.WriteLine (CLI の従来挙動)。
+    /// Studio はここから SSE へ流す。
+    /// </param>
     public CommentaryLoop(IWindowCapture capture, Persona persona, ModerationFilter filter,
-                          ISpeaker speaker, int historyLimit = 4, string displayName = "ぷる乃")
+                          ISpeaker speaker, int historyLimit = 4, string displayName = "ぷる乃",
+                          Action<string>? log = null)
     {
         _capture = capture ?? throw new ArgumentNullException(nameof(capture));
         _persona = persona ?? throw new ArgumentNullException(nameof(persona));
@@ -31,6 +37,7 @@ public class CommentaryLoop
         _speaker = speaker ?? throw new ArgumentNullException(nameof(speaker));
         _historyLimit = historyLimit;
         _displayName = displayName;
+        _log = log ?? Console.WriteLine;
     }
 
     /// <summary>直近の実況履歴 (最大 historyLimit 件)。</summary>
@@ -59,14 +66,14 @@ public class CommentaryLoop
         catch (Exception ex)
         {
             // キャプチャ or 生成の失敗: 履歴を汚さずスキップして次へ
-            Console.WriteLine($"[error] {ex.Message} (次のキャプチャで再試行)");
+            _log($"[error] {ex.Message} (次のキャプチャで再試行)");
             return null;
         }
 
         if (!_filter.IsSafe(comment))
         {
             // フィルタ違反: 応答を破棄し履歴にも入れない
-            Console.WriteLine($"[skip] フィルタに掛かった実況: {comment}");
+            _log($"[skip] フィルタに掛かった実況: {comment}");
             return null;
         }
 
@@ -90,7 +97,7 @@ public class CommentaryLoop
         catch (Exception ex)
         {
             // 発話の失敗はログのみ。実況自体は成立しているので履歴には残す
-            Console.WriteLine($"[error] 発話に失敗: {ex.Message}");
+            _log($"[error] 発話に失敗: {ex.Message}");
         }
 
         return comment;

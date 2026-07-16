@@ -1,7 +1,8 @@
 # Studio 使い方ガイド(配信コントロールパネル)
 
 配信中に使うローカル Web UI です。ブラウザから **会話ログの閲覧・テストコメントの注入・
-設定変更・配信の開始/停止・VOICEVOX / PuruPuruPNGTuber の起動** を行えます。
+設定変更・配信の開始/停止・ゲーム実況(ウィンドウキャプチャ)の開始/停止・
+VOICEVOX / PuruPuruPNGTuber の起動** を行えます。
 設計の詳細は [studio-architecture.md](studio-architecture.md) を参照してください。
 
 - 待ち受けは `http://127.0.0.1:5100` 固定(**localhost のみ**。認証なし・LAN には公開されません)
@@ -13,13 +14,18 @@
 
 1. APIキー(`ANTHROPIC_API_KEY` など使用する LLM のもの)をユーザー環境変数に設定する
    (`dotnet run --project Setup` の GUI が便利)
-2. UI から VOICEVOX / PuruPuruPNGTuber を起動したい場合は、exe パスを環境変数に設定する:
+2. UI から VOICEVOX / PuruPuruPNGTuber を起動したい場合は、exe パスを環境変数に設定する
+   (Setup の「外部アプリ (Studio)」タブから参照ボタンで選んで保存できる):
 
 | 環境変数 | 例 | 備考 |
 |---|---|---|
 | `VOICEVOX_EXE_PATH` | `C:\Users\you\AppData\Local\Programs\VOICEVOX\vv-engine\run.exe` | エンジン単体 (`vv-engine/run.exe`) 推奨。エディタ exe でも可 |
-| `PURUPURU_EXE_PATH` | `C:\Tools\PuruPuruPNGTuber\PuruPuruPNGTuber.exe` | |
+| `PURUPURU_PATH` | `C:\Users\you\src\PuruPuruPNGTuber\run_local_server.bat` | PuruPuruPNGTuber は exe ではなくブラウザで動く Web アプリ。同梱の `run_local_server.bat`(要 Python 3.10+)を指定する |
+| `PURUPURU_URL` | `http://127.0.0.1:8223`(既定) | PuruPuru のローカルサーバ URL。ポートを変えている場合のみ |
 | `STUDIO_PORT` | `5100`(既定) | ポートを変えたい場合のみ |
+
+PuruPuru の「起動」はローカルサーバの起動です。アバター画面はサーバ稼働中に表示される
+**「画面を開く」リンク**(または OBS のブラウザソースで同 URL)から開きます。
 
 未設定でもヘッダのバッジが「パス未設定」になるだけで、**手動で起動済みのアプリはそのまま使えます**
 (外部起動として自動検出されます)。
@@ -41,10 +47,10 @@ dotnet run --project Studio -- --open  # 既定ブラウザを自動で開く
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ ヘッダ: ペルソナ名 | [VOICEVOX●] [PuruPuru●] [Live●] | SSE接続状態 │
+│ ヘッダ: ペルソナ名 | [VOICEVOX●] [PuruPuru●] [Live●] [実況●] | SSE接続状態 │
 ├──────────────────────────────┬───────────────────────┤
-│ 会話ログ (タイムライン)        │ 起動パネル / 配信パネル / 設定パネル │
-│ コメント注入フォーム           │                       │
+│ 会話ログ (タイムライン)        │ 起動パネル / 配信パネル /       │
+│ コメント注入フォーム           │ ゲーム実況パネル / 設定パネル    │
 └──────────────────────────────┴───────────────────────┘
 ```
 
@@ -67,6 +73,21 @@ dotnet run --project Studio -- --open  # 既定ブラウザを自動で開く
 
 起動失敗(APIキー未設定・ペルソナ不足・出力デバイス無しなど)は、原因がそのまま
 エラーメッセージとして会話ログに表示されます。
+
+## ゲーム実況パネル(ウィンドウキャプチャ → Vision実況 → 発話)
+
+`dotnet run --project GameCommentary` と同じ実況ループを Studio から操作できます。
+
+1. **ウィンドウ**のドロップダウンから対象(ゲーム画面など)を選ぶ
+   (一覧は現在の可視ウィンドウ。起動し直したら **[一覧更新]**)
+2. **[実況開始]** — 12秒間隔(`CAPTURE_INTERVAL_SEC`)でキャプチャ → Vision実況 →
+   フィルタ → VOICEVOX 発話。実況文は会話ログに「実況」として流れます
+3. **[実況停止]** で終了
+
+- ペルソナのモード別プロンプトは `game_system.md` を使います(無ければ開始時にエラー)
+- **配信セッション(Live)との同時実行はできません**(発話が重なるため。どちらかを停止してから開始)
+- キャプチャ失敗(ウィンドウを閉じた・最小化した等)やフィルタ違反はスキップして
+  次のキャプチャで再試行し、原因を会話ログに表示します
 
 ## 設定パネル
 
@@ -99,6 +120,10 @@ curl -X POST http://127.0.0.1:5100/api/live/start -H "Content-Type: application/
      -d "{\"source\":\"manual\"}"
 curl -X POST http://127.0.0.1:5100/api/live/comment -H "Content-Type: application/json" \
      -d "{\"author\":\"テスト\",\"text\":\"こんにちは\"}"
+curl http://127.0.0.1:5100/api/windows                # 可視ウィンドウのタイトル一覧
+curl -X POST http://127.0.0.1:5100/api/commentary/start -H "Content-Type: application/json" \
+     -d "{\"window\":\"VALORANT\"}"                   # ゲーム実況開始 (タイトル部分一致)
+curl -X POST http://127.0.0.1:5100/api/commentary/stop
 curl -X PUT  http://127.0.0.1:5100/api/settings -H "Content-Type: application/json" \
      -d "{\"immediate\":{\"freetalkAfterSec\":60}}"
 curl -X POST http://127.0.0.1:5100/api/live/stop      # 配信メモ保存まで行って停止
@@ -111,7 +136,7 @@ curl -X POST http://127.0.0.1:5100/api/live/stop      # 配信メモ保存まで
 | 症状 | 原因と対処 |
 |---|---|
 | シークレットが「未設定」表示 | Studio を起動したターミナルから環境変数が見えていない。Setup で保存後、新しいターミナルから起動する |
-| VOICEVOX / PuruPuru が「パス未設定」 | `VOICEVOX_EXE_PATH` / `PURUPURU_EXE_PATH` が未設定。手動起動でも可(自動検出される) |
+| VOICEVOX / PuruPuru が「パス未設定」 | `VOICEVOX_EXE_PATH` / `PURUPURU_PATH` が未設定。手動起動でも可(自動検出される) |
 | 停止ボタンが押せない | RunningExternal(手動起動)のアプリは Studio からは停止しない設計。手で閉じる |
 | 配信開始が 400 エラー | メッセージどおり(APIキー未設定 / ペルソナのファイル不足 / 出力デバイスが見つからない等)。会話ログに原因が出る |
 | VOICEVOX 起動が Faulted | `/version` 応答待ちが60秒でタイムアウト。エンジンの起動が重い場合は手動起動してから Studio を使う |

@@ -80,15 +80,25 @@ public class SseEventMapperTests
     }
 
     [Fact]
-    public void Stateイベントは3アプリの状態を1つのJSONに合成する()
+    public void Stateイベントは4セクションの状態を1つのJSONに合成する()
     {
-        var sseEvent = SseEventMapper.State("Running", "Running", "RunningExternal");
+        var sseEvent = SseEventMapper.State("Running", "Running", "RunningExternal", "Stopped");
 
         Assert.Equal("state", sseEvent.Name);
         var data = Parse(sseEvent.Data);
         Assert.Equal("Running", data.GetProperty("live").GetString());
         Assert.Equal("Running", data.GetProperty("voicevox").GetString());
         Assert.Equal("RunningExternal", data.GetProperty("purupuru").GetString());
+        Assert.Equal("Stopped", data.GetProperty("commentary").GetString());
+    }
+
+    [Fact]
+    public void Commentaryイベントはゲーム実況の発話を持つ()
+    {
+        var sseEvent = SseEventMapper.Commentary(At, "[joy]敵が出てきたよ!");
+
+        Assert.Equal("commentary", sseEvent.Name);
+        Assert.Equal("[joy]敵が出てきたよ!", Parse(sseEvent.Data).GetProperty("text").GetString());
     }
 
     [Fact]

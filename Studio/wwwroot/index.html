@@ -14,6 +14,7 @@
       <span class="badge state-unknown" id="badge-voicevox" title="">VOICEVOX: -</span>
       <span class="badge state-unknown" id="badge-purupuru" title="">PuruPuru: -</span>
       <span class="badge state-unknown" id="badge-live" title="">Live: -</span>
+      <span class="badge state-unknown" id="badge-commentary" title="">実況: -</span>
     </div>
   </div>
   <div class="header-right">
@@ -56,6 +57,7 @@
         <div class="app-row-actions">
           <button type="button" id="purupuru-start-btn" class="btn">起動</button>
           <button type="button" id="purupuru-stop-btn" class="btn btn-danger">停止</button>
+          <a id="purupuru-open-link" class="btn" href="#" target="_blank" rel="noopener" hidden>画面を開く</a>
         </div>
       </div>
     </div>
@@ -79,6 +81,20 @@
         <button type="button" id="live-stop-btn" class="btn btn-danger">配信停止</button>
       </div>
       <div class="live-info" id="live-info"></div>
+    </div>
+
+    <div class="panel">
+      <h2>ゲーム実況パネル</h2>
+      <div class="field-row">
+        <label for="commentary-window">ウィンドウ</label>
+        <select id="commentary-window"></select>
+      </div>
+      <div class="live-actions">
+        <button type="button" id="windows-refresh-btn" class="btn">一覧更新</button>
+        <button type="button" id="commentary-start-btn" class="btn btn-primary">実況開始</button>
+        <button type="button" id="commentary-stop-btn" class="btn btn-danger">実況停止</button>
+      </div>
+      <div class="live-info" id="commentary-info"></div>
     </div>
 
     <div class="panel">

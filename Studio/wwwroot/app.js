@@ -86,6 +86,7 @@ const LOG_LABELS = {
   skip: "skip",
   freetalk: "フリートーク",
   note: "配信メモ",
+  commentary: "実況",
   "log-info": "info",
   "log-error": "error",
 };
@@ -97,6 +98,7 @@ function describeLogPayload(kind, payload) {
       return list.map((c) => `${c.author}: ${c.text}`).join(" / ") || "(コメントなし)";
     }
     case "reply":
+    case "commentary":
       return payload.text || "";
     case "skip":
       return payload.reason || "";
@@ -170,16 +172,23 @@ function setBadge(el, prefix, state, tooltip) {
 const badgeVoicevox = qs("badge-voicevox");
 const badgePurupuru = qs("badge-purupuru");
 const badgeLive = qs("badge-live");
+const badgeCommentary = qs("badge-commentary");
 const personaNameEl = qs("persona-name");
 const liveInfoEl = qs("live-info");
+const commentaryInfoEl = qs("commentary-info");
 
 const voicevoxStartBtn = qs("voicevox-start-btn");
 const voicevoxStopBtn = qs("voicevox-stop-btn");
 const purupuruStartBtn = qs("purupuru-start-btn");
 const purupuruStopBtn = qs("purupuru-stop-btn");
+const purupuruOpenLink = qs("purupuru-open-link");
 const startAllBtn = qs("start-all-btn");
 const liveStartBtn = qs("live-start-btn");
 const liveStopBtn = qs("live-stop-btn");
+const commentaryWindowSelect = qs("commentary-window");
+const windowsRefreshBtn = qs("windows-refresh-btn");
+const commentaryStartBtn = qs("commentary-start-btn");
+const commentaryStopBtn = qs("commentary-stop-btn");
 
 function appStartDisabled(state) {
   return state === "Starting" || state === "Running" || state === "RunningExternal" || state === "NotConfigured";
@@ -194,15 +203,26 @@ function applyStatus(status) {
   const vv = status.voicevox || {};
   const pp = status.purupuru || {};
   const live = status.live || {};
+  const commentary = status.commentary || {};
 
   setBadge(badgeVoicevox, "VOICEVOX", vv.state, vv.version ? `version ${vv.version}` : undefined);
   setBadge(badgePurupuru, "PuruPuru", pp.state);
   setBadge(badgeLive, "Live", live.state);
+  setBadge(badgeCommentary, "実況", commentary.state);
 
   voicevoxStartBtn.disabled = appStartDisabled(vv.state);
   voicevoxStopBtn.disabled = appStopDisabled(vv.state);
   purupuruStartBtn.disabled = appStartDisabled(pp.state);
   purupuruStopBtn.disabled = appStopDisabled(pp.state);
+  // PuruPuru はブラウザで表示する Web アプリ。サーバ稼働中のみ「画面を開く」リンクを出す
+  if (pp.url) {
+    purupuruOpenLink.href = pp.url;
+  }
+  if (pp.state === "Running" || pp.state === "RunningExternal") {
+    purupuruOpenLink.hidden = !purupuruOpenLink.href || purupuruOpenLink.getAttribute("href") === "#";
+  } else if (pp.state) {
+    purupuruOpenLink.hidden = true;
+  }
 
   const liveBusy = live.state === "Starting" || live.state === "Stopping";
   liveStartBtn.disabled = liveBusy || live.state === "Running";
@@ -216,6 +236,15 @@ function applyStatus(status) {
   if (live.source) infoParts.push(`ソース: ${live.source}`);
   if (live.startedAt) infoParts.push(`開始: ${formatTime(live.startedAt)}`);
   liveInfoEl.textContent = infoParts.join(" / ");
+
+  const commentaryBusy = commentary.state === "Starting" || commentary.state === "Stopping";
+  commentaryStartBtn.disabled = commentaryBusy || commentary.state === "Running";
+  commentaryStopBtn.disabled = commentaryBusy || commentary.state !== "Running";
+
+  const commentaryParts = [];
+  if (commentary.window) commentaryParts.push(`対象: ${commentary.window}`);
+  if (commentary.startedAt) commentaryParts.push(`開始: ${formatTime(commentary.startedAt)}`);
+  commentaryInfoEl.textContent = commentaryParts.join(" / ");
 }
 
 async function refreshStatus() {
@@ -277,6 +306,45 @@ liveStartBtn.addEventListener("click", async () => {
 
 liveStopBtn.addEventListener("click", async () => {
   await api.post("/api/live/stop");
+  refreshStatus();
+});
+
+/* ==========================================================================
+ * ゲーム実況パネル
+ * ========================================================================== */
+
+async function loadWindows() {
+  const res = await api.get("/api/windows");
+  const windows = (res.ok && res.data && Array.isArray(res.data.windows)) ? res.data.windows : [];
+  const previous = commentaryWindowSelect.value;
+  commentaryWindowSelect.textContent = "";
+
+  for (const title of windows) {
+    const opt = document.createElement("option");
+    opt.value = title;
+    opt.textContent = title;
+    commentaryWindowSelect.appendChild(opt);
+  }
+  // 更新前の選択を維持する (一覧から消えていたら先頭に戻る)
+  if (previous && windows.includes(previous)) {
+    commentaryWindowSelect.value = previous;
+  }
+}
+
+windowsRefreshBtn.addEventListener("click", loadWindows);
+
+commentaryStartBtn.addEventListener("click", async () => {
+  const window = commentaryWindowSelect.value;
+  if (!window) {
+    appendLog({ at: new Date().toISOString(), level: "error", message: "対象ウィンドウを選択してください (一覧が空なら「一覧更新」)" }, "log-error");
+    return;
+  }
+  await api.post("/api/commentary/start", { window });
+  refreshStatus();
+});
+
+commentaryStopBtn.addEventListener("click", async () => {
+  await api.post("/api/commentary/stop");
   refreshStatus();
 });
 
@@ -466,6 +534,7 @@ function connectEvents() {
   bind("skip", "skip");
   bind("freetalk", "freetalk");
   bind("note", "note");
+  bind("commentary", "commentary");
 
   source.addEventListener("log", (ev) => {
     let payload;
@@ -485,6 +554,7 @@ function connectEvents() {
         voicevox: { state: payload.voicevox },
         purupuru: { state: payload.purupuru },
         live: { state: payload.live },
+        commentary: { state: payload.commentary },
       });
     } catch (_) {
       /* ignore */
@@ -503,6 +573,7 @@ async function init() {
   await refreshStatus();
   await loadSettings();
   await loadDevices();
+  await loadWindows();
   connectEvents();
 }
 
