@@ -79,6 +79,18 @@ public class ManagedAppTests
         ProcessName = "PuruPuruPNGTuber",
     };
 
+    /// <summary>PuruPuruPNGTuber 相当: HTTP 死活だが応答は HTML なのでバージョン表示しない。</summary>
+    private static ManagedAppConfig PurupuruConfig(string? path) => new()
+    {
+        DisplayName = "PuruPuruPNGTuber",
+        ExePathProvider = () => path,
+        LivenessMode = LivenessMode.Http,
+        HealthUrl = "http://127.0.0.1:8223/",
+        ReportsVersion = false,
+        StartTimeoutSec = 30,
+        PollIntervalSec = 2,
+    };
+
     // --- NotConfigured ---
 
     [Fact]
@@ -143,6 +155,32 @@ public class ManagedAppTests
 
         Assert.Equal(AppState.Running, status.State);
         Assert.True(app.OwnsProcess);
+    }
+
+    [Fact]
+    public async Task ReportsVersionがfalseなら起動成功してもバージョンを持たない()
+    {
+        // PuruPuru のローカルサーバはトップページの HTML が返るため、本文をバージョンとして扱わない
+        var runner = new FakeProcessRunner { BecomeAliveAfterDelays = 1, VersionAfterDelay = "<!DOCTYPE html>..." };
+        var app = new ManagedApp(runner, PurupuruConfig("C:/pp/run_local_server.bat"));
+
+        var status = await app.StartAsync(CancellationToken.None);
+
+        Assert.Equal(AppState.Running, status.State);
+        Assert.Null(status.Version);
+    }
+
+    [Fact]
+    public async Task ReportsVersionがfalseの外部起動検出でもバージョンを持たない()
+    {
+        // 手動でローカルサーバを立てていた場合 → RunningExternal (殺さない対象)
+        var runner = new FakeProcessRunner { Version = "<!DOCTYPE html>..." };
+        var app = new ManagedApp(runner, PurupuruConfig(path: null));
+
+        var status = await app.RefreshAsync(CancellationToken.None);
+
+        Assert.Equal(AppState.RunningExternal, status.State);
+        Assert.Null(status.Version);
     }
 
     // --- 外部起動検出 ---

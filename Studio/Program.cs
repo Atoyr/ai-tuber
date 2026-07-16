@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Medoz.AiTuber.Core;
+using Medoz.GameCommentary;
 using Medoz.Live;
 using Medoz.Studio;
 using Medoz.Studio.Apps;
+using Medoz.Studio.Commentary;
 using Medoz.Studio.Events;
 using Medoz.Studio.LiveHosting;
 using Medoz.Studio.Settings;
@@ -48,12 +50,29 @@ var liveHost = new LiveSessionHost(settingsStore, liveEvent =>
         notifier?.PublishIfChanged();
     }
 });
+// ゲーム実況イベント → SSE (発話は commentary、診断は log、状態変化は state)
+var commentaryHost = new CommentarySessionHost(settingsStore, commentaryEvent =>
+{
+    switch (commentaryEvent)
+    {
+        case CommentarySpoken spoken:
+            broker.Publish(SseEventMapper.Commentary(spoken.At, spoken.Text));
+            break;
+        case CommentaryLogMessage log:
+            broker.Publish(SseEventMapper.Log(log.At, log.Level, log.Message));
+            break;
+        case CommentaryStateChanged:
+            notifier?.PublishIfChanged();
+            break;
+    }
+});
 var launcher = new AppLauncher(new ProcessRunner(), AppConfig.LoadFromEnvironment);
-notifier = new StudioStateNotifier(broker, launcher, liveHost);
+notifier = new StudioStateNotifier(broker, launcher, liveHost, commentaryHost);
 
 builder.Services.AddSingleton(settingsStore);
 builder.Services.AddSingleton(broker);
 builder.Services.AddSingleton(liveHost);
+builder.Services.AddSingleton(commentaryHost);
 builder.Services.AddSingleton(launcher);
 builder.Services.AddSingleton(notifier);
 
@@ -88,17 +107,24 @@ async Task<object> BuildStatusAsync()
     var vv = launcher.Voicevox.Current();
     var pp = launcher.Purupuru.Current();
     var live = liveHost.Status();
+    var commentary = commentaryHost.Status();
 
     return new
     {
         voicevox = new { state = vv.State.ToString(), version = vv.Version },
-        purupuru = new { state = pp.State.ToString() },
+        purupuru = new { state = pp.State.ToString(), url = launcher.PurupuruUrl },
         live = new
         {
             state = live.State,
             source = live.Source,
             persona = live.PersonaName,
             startedAt = live.StartedAt,
+        },
+        commentary = new
+        {
+            state = commentary.State,
+            window = commentary.Window,
+            startedAt = commentary.StartedAt,
         },
     };
 }
@@ -131,6 +157,10 @@ app.MapPost("/api/live/start", (LiveStartRequest request) =>
     if (string.IsNullOrWhiteSpace(request?.Source))
     {
         return Results.Json(new { error = "source (manual / twitch / youtube) を指定してください。" }, jsonOptions, statusCode: 400);
+    }
+    if (commentaryHost.Status().State == "Running")
+    {
+        return Results.Json(new { error = "ゲーム実況の実行中は配信セッションを開始できません (発話が重なるため)。先に実況を停止してください。" }, jsonOptions, statusCode: 409);
     }
     try
     {
@@ -171,6 +201,56 @@ app.MapPost("/api/live/comment", (CommentRequest request) =>
     {
         liveHost.InjectComment(string.IsNullOrWhiteSpace(request.Author) ? "テスト" : request.Author, request.Text);
         return Results.Json(new { ok = true }, jsonOptions);
+    }
+    catch (LiveSessionHostException ex)
+    {
+        return Results.Json(new { error = ex.Message }, jsonOptions, statusCode: ex.StatusCode);
+    }
+});
+
+// --- ゲーム実況セッション (ウィンドウキャプチャ → Vision実況 → 発話) ---
+app.MapGet("/api/windows", () =>
+{
+    try
+    {
+        return Results.Json(new { windows = WindowCapture.GetVisibleWindowTitles() }, jsonOptions);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = ex.Message, windows = Array.Empty<string>() }, jsonOptions, statusCode: 500);
+    }
+});
+
+app.MapPost("/api/commentary/start", (CommentaryStartRequest request) =>
+{
+    // 配信セッションと実況の同時実行は発話が重なるため相互排他にする
+    string liveState = liveHost.Status().State;
+    if (liveState is nameof(SessionState.Starting) or nameof(SessionState.Running))
+    {
+        return Results.Json(new { error = "配信セッションの実行中はゲーム実況を開始できません (発話が重なるため)。先に配信を停止してください。" }, jsonOptions, statusCode: 409);
+    }
+    try
+    {
+        var status = commentaryHost.Start(request?.Window);
+        notifier?.PublishIfChanged();
+        broker.Publish(SseEventMapper.Log(DateTimeOffset.Now, "info", $"ゲーム実況を開始しました (対象: {status.Window})"));
+        return Results.Json(new { state = status.State, window = status.Window, startedAt = status.StartedAt }, jsonOptions);
+    }
+    catch (LiveSessionHostException ex)
+    {
+        broker.Publish(SseEventMapper.Log(DateTimeOffset.Now, "error", ex.Message));
+        return Results.Json(new { error = ex.Message }, jsonOptions, statusCode: ex.StatusCode);
+    }
+});
+
+app.MapPost("/api/commentary/stop", async () =>
+{
+    try
+    {
+        var status = await commentaryHost.StopAsync();
+        notifier?.PublishIfChanged();
+        broker.Publish(SseEventMapper.Log(DateTimeOffset.Now, "info", "ゲーム実況を停止しました"));
+        return Results.Json(new { state = status.State }, jsonOptions);
     }
     catch (LiveSessionHostException ex)
     {
@@ -304,10 +384,11 @@ if (args.Contains("--open"))
     }
 }
 
-// 終了時は配信セッションを止めて配信メモ保存まで行う
+// 終了時は配信セッション (配信メモ保存まで) とゲーム実況を止める
 app.Lifetime.ApplicationStopping.Register(() =>
 {
     liveHost.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    commentaryHost.DisposeAsync().AsTask().GetAwaiter().GetResult();
 });
 
 app.Run();
@@ -317,3 +398,6 @@ public sealed record LiveStartRequest(string? Source, string? Target);
 
 /// <summary>POST /api/live/comment の body。</summary>
 public sealed record CommentRequest(string? Author, string? Text);
+
+/// <summary>POST /api/commentary/start の body。</summary>
+public sealed record CommentaryStartRequest(string? Window);

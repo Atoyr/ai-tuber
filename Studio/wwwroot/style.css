@@ -20,6 +20,7 @@
   --log-skip: #f59e0b;
   --log-freetalk: #a78bfa;
   --log-note: #f472b6;
+  --log-commentary: #34d399;
   --log-info: #9aa1ac;
   --log-error: #ef4444;
 }
@@ -245,6 +246,7 @@ button, input, select {
 .log-entry.type-skip .log-tag { background: var(--log-skip); }
 .log-entry.type-freetalk .log-tag { background: var(--log-freetalk); }
 .log-entry.type-note .log-tag { background: var(--log-note); }
+.log-entry.type-commentary .log-tag { background: var(--log-commentary); }
 .log-entry.type-log-info .log-tag { background: var(--log-info); }
 .log-entry.type-log-error .log-tag { background: var(--log-error); color: #fff; }
 .log-entry.type-log-error .log-body { color: var(--log-error); }

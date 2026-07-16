@@ -20,6 +20,11 @@ public sealed class SetupSettings
     public int SpeakerId { get; set; } = 3;
     public string OutputDeviceName { get; set; } = "CABLE Input";
 
+    // 外部アプリ (Studio の起動パネルが使う起動パス)
+    public string VoicevoxExePath { get; set; } = "";
+    // PuruPuruPNGTuber は exe ではなくブラウザで動く Web アプリ。run_local_server.bat のパスを指す
+    public string PurupuruPath { get; set; } = "";
+
     // X (Twitter)
     public string XConsumerKey { get; set; } = "";
     public string XConsumerSecret { get; set; } = "";

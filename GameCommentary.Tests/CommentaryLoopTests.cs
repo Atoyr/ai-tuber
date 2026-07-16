@@ -27,11 +27,12 @@ public class CommentaryLoopTests : IDisposable
     }
 
     private CommentaryLoop CreateLoop(FakeChatClient client, FakeWindowCapture capture,
-                                      FakeSpeaker speaker, int historyLimit = 4)
+                                      FakeSpeaker speaker, int historyLimit = 4,
+                                      Action<string>? log = null)
     {
         var persona = new Persona(client, PersonaPackage.Load(_promptDir), "game_system.md");
         var filter = new ModerationFilter(BannedWords);
-        return new CommentaryLoop(capture, persona, filter, speaker, historyLimit, "テスト");
+        return new CommentaryLoop(capture, persona, filter, speaker, historyLimit, "テスト", log);
     }
 
     [Fact]
@@ -84,6 +85,24 @@ public class CommentaryLoopTests : IDisposable
         Assert.Empty(loop.History);
         Assert.Empty(speaker.Spoken);
         Assert.Equal(0, client.CallCount); // 生成まで到達しない
+    }
+
+    [Fact]
+    public async Task RunOnceAsync_ReportsSkipAndErrorToInjectedLog()
+    {
+        // Studio が SSE へ流すための注入ログに [skip] / [error] が届くこと
+        var logs = new List<string>();
+        var speaker = new FakeSpeaker();
+
+        var filtered = CreateLoop(new FakeChatClient("@メンションだよ"), new FakeWindowCapture(), speaker, log: logs.Add);
+        await filtered.RunOnceAsync();
+
+        var captureFailed = CreateLoop(new FakeChatClient("使われないはず"),
+            new FakeWindowCapture(toThrow: new InvalidOperationException("キャプチャ失敗")), speaker, log: logs.Add);
+        await captureFailed.RunOnceAsync();
+
+        Assert.Contains(logs, m => m.StartsWith("[skip]") && m.Contains("@メンションだよ"));
+        Assert.Contains(logs, m => m.StartsWith("[error]") && m.Contains("キャプチャ失敗"));
     }
 
     [Fact]

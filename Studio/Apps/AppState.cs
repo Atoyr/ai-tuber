@@ -30,10 +30,10 @@ public sealed record AppStatus(AppState State, string? Version = null);
 /// <summary>死活確認の方式。</summary>
 public enum LivenessMode
 {
-    /// <summary>HTTP GET /version の応答で判定 (VOICEVOX)。</summary>
+    /// <summary>HTTP GET の応答で判定 (VOICEVOX の /version、PuruPuruPNGTuber のローカルサーバ)。</summary>
     Http,
 
-    /// <summary>プロセスの生存で判定 (PuruPuruPNGTuber)。</summary>
+    /// <summary>プロセスの生存で判定。</summary>
     Process,
 }
 
@@ -43,13 +43,19 @@ public sealed record ManagedAppConfig
     /// <summary>表示名 (ログ・例外メッセージ用)。</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>現在の exe パスを解決する (環境変数など。未設定なら null/空)。</summary>
+    /// <summary>現在の起動ファイルパス (exe / bat) を解決する (環境変数など。未設定なら null/空)。</summary>
     public required Func<string?> ExePathProvider { get; init; }
 
     public required LivenessMode LivenessMode { get; init; }
 
     /// <summary>HTTP 死活確認の URL (<see cref="LivenessMode.Http"/> のとき必須)。</summary>
     public string? HealthUrl { get; init; }
+
+    /// <summary>
+    /// HealthUrl の応答本文をバージョンとして表示するか。
+    /// VOICEVOX の /version は true、PuruPuruPNGTuber のトップページ (HTML が返る) は false。
+    /// </summary>
+    public bool ReportsVersion { get; init; } = true;
 
     /// <summary>外部プロセス検出に使うプロセス名 (拡張子なし)。</summary>
     public string ProcessName { get; init; } = "";

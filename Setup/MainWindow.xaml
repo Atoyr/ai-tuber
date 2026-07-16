@@ -119,6 +119,38 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- 外部アプリ (Studio 起動用) -->
+            <TabItem Header="外部アプリ (Studio)">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12">
+                        <CheckBox x:Name="SkipApps" Content="この項目を保存しない (スキップ)"
+                                  Margin="0,0,0,8"/>
+
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="Studio (配信コントロールパネル) の起動パネルから VOICEVOX / PuruPuruPNGTuber を起動するためのパスです。未設定でも手動起動したアプリはそのまま使えます。"/>
+
+                        <TextBlock Text="VOICEVOX の exe パス (VOICEVOX_EXE_PATH)" Style="{StaticResource LabelStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox x:Name="VoicevoxExeBox" Width="560"/>
+                            <Button Content="参照..." Margin="8,0,0,0" Padding="10,2" Click="BrowseVoicevoxExe_Click"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="エンジン単体 (vv-engine\run.exe) 推奨。エディタの VOICEVOX.exe でも可。例: C:\Users\you\AppData\Local\Programs\VOICEVOX\vv-engine\run.exe"/>
+
+                        <TextBlock Text="PuruPuruPNGTuber の run_local_server.bat のパス (PURUPURU_PATH)" Style="{StaticResource LabelStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox x:Name="PurupuruPathBox" Width="560"/>
+                            <Button Content="参照..." Margin="8,0,0,0" Padding="10,2" Click="BrowsePurupuruPath_Click"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="PuruPuruPNGTuber は exe ではなくブラウザで動く Web アプリです。リポジトリ同梱の run_local_server.bat を指定すると、Studio からローカルサーバ (http://127.0.0.1:8223) を起動できます。例: C:\Users\you\src\PuruPuruPNGTuber\run_local_server.bat"/>
+
+                        <TextBlock Style="{StaticResource HintStyle}" Margin="0,8,0,0"
+                                   Text="※ 空欄のパスは保存時にスキップされ、既存の環境変数を上書きしません。"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- X -->
             <TabItem Header="X (Twitter) 認証">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">

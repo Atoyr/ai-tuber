@@ -3,9 +3,9 @@ namespace Medoz.Studio.Apps;
 /// <summary>
 /// 1つの外部アプリ (VOICEVOX または PuruPuruPNGTuber) の起動・停止・死活監視を担う状態機械。
 /// docs/studio-architecture.md の設計原則:
-/// - すでに起動していたら起動しない (VOICEVOX は /version 応答、PuruPuru はプロセス名一致で検出 → RunningExternal)
+/// - すでに起動していたら起動しない (VOICEVOX は /version、PuruPuru はローカルサーバの HTTP 応答で検出 → RunningExternal)
 /// - Studio が起動したプロセスのみ Kill する (ユーザーが手起動したものは殺さない)
-/// - exe パス未設定なら NotConfigured
+/// - 起動パス未設定なら NotConfigured
 ///
 /// プロセス操作・HTTP 死活確認は <see cref="IProcessRunner"/> で注入するため、状態遷移をユニットテストできる。
 /// </summary>
@@ -69,7 +69,7 @@ public sealed class ManagedApp
                 }
                 if (version is not null)
                 {
-                    _version = version;
+                    _version = _config.ReportsVersion ? version : null;
                     _state = _ownedPid.HasValue ? AppState.Running : AppState.RunningExternal;
                 }
                 else
@@ -139,7 +139,7 @@ public sealed class ManagedApp
         {
             lock (_lock) { _state = AppState.NotConfigured; }
             throw new InvalidOperationException(
-                $"{_config.DisplayName} の exe パスが未設定です。環境変数で exe パスを設定してください。");
+                $"{_config.DisplayName} の起動パスが未設定です。環境変数で起動ファイル (exe / bat) のパスを設定してください。");
         }
 
         lock (_lock) { _state = AppState.Starting; }
@@ -168,7 +168,7 @@ public sealed class ManagedApp
                 {
                     lock (_lock)
                     {
-                        _version = version;
+                        _version = _config.ReportsVersion ? version : null;
                         _state = AppState.Running;
                         return new AppStatus(_state, _version);
                     }

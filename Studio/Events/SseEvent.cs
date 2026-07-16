@@ -66,9 +66,13 @@ public static class SseEventMapper
         _ => null,
     };
 
-    /// <summary>live / voicevox / purupuru の状態を合成した state イベントを作る。</summary>
-    public static SseEvent State(string live, string voicevox, string purupuru)
-        => new("state", JsonSerializer.Serialize(new { live, voicevox, purupuru }, JsonOptions));
+    /// <summary>live / voicevox / purupuru / commentary の状態を合成した state イベントを作る。</summary>
+    public static SseEvent State(string live, string voicevox, string purupuru, string commentary)
+        => new("state", JsonSerializer.Serialize(new { live, voicevox, purupuru, commentary }, JsonOptions));
+
+    /// <summary>ゲーム実況の発話 (commentary イベント) を作る。</summary>
+    public static SseEvent Commentary(DateTimeOffset at, string text)
+        => new("commentary", JsonSerializer.Serialize(new { at, text }, JsonOptions));
 
     /// <summary>システムメッセージの log イベントを作る。</summary>
     public static SseEvent Log(DateTimeOffset at, string level, string message)

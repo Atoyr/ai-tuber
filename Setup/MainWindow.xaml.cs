@@ -31,6 +31,10 @@ public partial class MainWindow : Window
         SpeakerIdBox.Text = s.SpeakerId.ToString();
         PopulateDevices(s.OutputDeviceName);
 
+        // 外部アプリ
+        VoicevoxExeBox.Text = s.VoicevoxExePath;
+        PurupuruPathBox.Text = s.PurupuruPath;
+
         // X
         XConsumerKeyBox.Password = s.XConsumerKey;
         XConsumerSecretBox.Password = s.XConsumerSecret;
@@ -115,9 +119,10 @@ public partial class MainWindow : Window
         var opts = new SetupStore.SaveOptions(
             SaveLlm: SkipLlm.IsChecked != true,
             SaveVoicevox: SkipVoicevox.IsChecked != true,
+            SaveApps: SkipApps.IsChecked != true,
             SaveX: SkipX.IsChecked != true);
 
-        if (!opts.SaveLlm && !opts.SaveVoicevox && !opts.SaveX)
+        if (!opts.SaveLlm && !opts.SaveVoicevox && !opts.SaveApps && !opts.SaveX)
         {
             StatusText.Text = "保存する項目がありません (すべてスキップ扱いになっています)。";
             return;
@@ -150,6 +155,9 @@ public partial class MainWindow : Window
             VoicevoxUrl = VoicevoxUrlBox.Text?.Trim() ?? "",
             OutputDeviceName = (DeviceCombo.Text ?? "").Trim(),
 
+            VoicevoxExePath = VoicevoxExeBox.Text?.Trim() ?? "",
+            PurupuruPath = PurupuruPathBox.Text?.Trim() ?? "",
+
             XConsumerKey = XConsumerKeyBox.Password,
             XConsumerSecret = XConsumerSecretBox.Password,
             XAccessToken = XAccessTokenBox.Password,
@@ -166,6 +174,45 @@ public partial class MainWindow : Window
             s.SpeakerId = sid;
         }
 
+        if (SkipApps.IsChecked != true)
+        {
+            if (!string.IsNullOrEmpty(s.VoicevoxExePath) && !System.IO.File.Exists(s.VoicevoxExePath))
+            {
+                validationError = $"VOICEVOX の exe が見つかりません: {s.VoicevoxExePath}";
+                return s;
+            }
+            if (!string.IsNullOrEmpty(s.PurupuruPath) && !System.IO.File.Exists(s.PurupuruPath))
+            {
+                validationError = $"PuruPuruPNGTuber の run_local_server.bat が見つかりません: {s.PurupuruPath}";
+                return s;
+            }
+        }
+
         return s;
+    }
+
+    private void BrowseVoicevoxExe_Click(object sender, RoutedEventArgs e)
+        => Browse(VoicevoxExeBox, "VOICEVOX の exe を選択",
+                  "実行ファイル (*.exe)|*.exe|すべてのファイル (*.*)|*.*");
+
+    private void BrowsePurupuruPath_Click(object sender, RoutedEventArgs e)
+        => Browse(PurupuruPathBox, "PuruPuruPNGTuber の run_local_server.bat を選択",
+                  "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*");
+
+    private static void Browse(TextBox target, string title, string filter)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = title,
+            Filter = filter,
+        };
+        if (System.IO.File.Exists(target.Text))
+        {
+            dialog.InitialDirectory = System.IO.Path.GetDirectoryName(target.Text);
+        }
+        if (dialog.ShowDialog() == true)
+        {
+            target.Text = dialog.FileName;
+        }
     }
 }

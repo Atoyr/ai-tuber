@@ -8,7 +8,7 @@ namespace Medoz.Studio.Apps;
 /// </summary>
 public interface IProcessRunner
 {
-    /// <summary>exe を起動し、プロセス識別子を返す。起動失敗時は例外を投げる。</summary>
+    /// <summary>起動ファイル (exe / bat) を起動し、プロセス識別子を返す。起動失敗時は例外を投げる。</summary>
     int Start(string exePath);
 
     /// <summary>指定 PID のプロセスが生存しているか。</summary>
