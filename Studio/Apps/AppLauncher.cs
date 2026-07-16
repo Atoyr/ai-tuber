@@ -4,19 +4,24 @@ namespace Medoz.Studio.Apps;
 
 /// <summary>
 /// VOICEVOX と PuruPuruPNGTuber の起動・停止・状態表示をまとめる (docs/studio-architecture.md)。
-/// exe パスは環境変数 (VOICEVOX_EXE_PATH / PURUPURU_EXE_PATH) から解決する。
-/// VOICEVOX の死活は <c>/version</c> ポーリング、PuruPuru はプロセス生存で判定する。
+/// 起動パスは環境変数 (VOICEVOX_EXE_PATH / PURUPURU_PATH) から解決する。
+/// PuruPuruPNGTuber は exe ではなくブラウザで動く Web アプリのため、起動対象は同梱の
+/// run_local_server.bat (ローカルサーバ)。死活は VOICEVOX 同様、HTTP 応答
+/// (既定 http://127.0.0.1:8223/、PURUPURU_URL で変更可) で判定する。
 /// </summary>
 public sealed class AppLauncher
 {
     /// <summary>VOICEVOX 起動用の環境変数名。</summary>
     public const string VoicevoxExeEnv = "VOICEVOX_EXE_PATH";
 
-    /// <summary>PuruPuruPNGTuber 起動用の環境変数名。</summary>
-    public const string PurupuruExeEnv = "PURUPURU_EXE_PATH";
+    /// <summary>PuruPuruPNGTuber のローカルサーバ起動用の環境変数名 (run_local_server.bat のパス)。</summary>
+    public const string PurupuruPathEnv = "PURUPURU_PATH";
 
-    /// <summary>PuruPuru の外部プロセス検出に使う既定のプロセス名。</summary>
-    public const string PurupuruDefaultProcessName = "PuruPuruPNGTuber";
+    /// <summary>PuruPuruPNGTuber のローカルサーバ URL の環境変数名。</summary>
+    public const string PurupuruUrlEnv = "PURUPURU_URL";
+
+    /// <summary>PuruPuruPNGTuber のローカルサーバの既定 URL。</summary>
+    public const string PurupuruDefaultUrl = "http://127.0.0.1:8223";
 
     public ManagedApp Voicevox { get; }
     public ManagedApp Purupuru { get; }
@@ -36,14 +41,21 @@ public sealed class AppLauncher
             PollIntervalSec = 2,
         });
 
+        PurupuruUrl = (EnvOrNull(PurupuruUrlEnv) ?? PurupuruDefaultUrl).TrimEnd('/');
         Purupuru = new ManagedApp(runner, new ManagedAppConfig
         {
             DisplayName = "PuruPuruPNGTuber",
-            ExePathProvider = () => EnvOrNull(PurupuruExeEnv),
-            LivenessMode = LivenessMode.Process,
-            ProcessName = ProcessNameFrom(EnvOrNull(PurupuruExeEnv)),
+            ExePathProvider = () => EnvOrNull(PurupuruPathEnv),
+            LivenessMode = LivenessMode.Http,
+            HealthUrl = PurupuruUrl + "/",
+            ReportsVersion = false,      // トップページの HTML が返るのでバージョンとしては扱わない
+            StartTimeoutSec = 30,
+            PollIntervalSec = 2,
         });
     }
+
+    /// <summary>PuruPuruPNGTuber のローカルサーバ URL (UI の「画面を開く」リンクに使う)。</summary>
+    public string PurupuruUrl { get; }
 
     public ManagedApp Get(string name) => name.ToLowerInvariant() switch
     {
@@ -68,9 +80,4 @@ public sealed class AppLauncher
 
     private static string? EnvOrNull(string name)
         => Environment.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : null;
-
-    private static string ProcessNameFrom(string? exePath)
-        => string.IsNullOrWhiteSpace(exePath)
-            ? PurupuruDefaultProcessName
-            : Path.GetFileNameWithoutExtension(exePath);
 }

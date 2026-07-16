@@ -28,6 +28,9 @@ public static class SetupStore
         if (int.TryParse(Env("VOICEVOX_SPEAKER_ID"), out int sid)) s.SpeakerId = sid;
         s.OutputDeviceName = Env("VOICEVOX_OUTPUT_DEVICE") ?? s.OutputDeviceName;
 
+        s.VoicevoxExePath = Env("VOICEVOX_EXE_PATH") ?? "";
+        s.PurupuruPath = Env("PURUPURU_PATH") ?? "";
+
         // X は AppConfig と PostX の両方式を吸収 (どちらの名前でもよい)
         s.XConsumerKey = Env("X_CONSUMER_KEY") ?? Env("X_API_KEY") ?? "";
         s.XConsumerSecret = Env("X_CONSUMER_SECRET") ?? Env("X_API_SECRET") ?? "";
@@ -37,7 +40,7 @@ public static class SetupStore
         return s;
     }
 
-    public sealed record SaveOptions(bool SaveLlm, bool SaveVoicevox, bool SaveX);
+    public sealed record SaveOptions(bool SaveLlm, bool SaveVoicevox, bool SaveApps, bool SaveX);
 
     public sealed record SaveReport(IReadOnlyList<string> Messages, IReadOnlyList<string> Errors)
     {
@@ -70,6 +73,13 @@ public static class SetupStore
                 SetEnv("VOICEVOX_SPEAKER_ID", s.SpeakerId.ToString());
                 SetEnv("VOICEVOX_OUTPUT_DEVICE", s.OutputDeviceName);
                 messages.Add("VOICEVOX 設定を保存しました (ユーザー環境変数)");
+            }
+
+            if (opts.SaveApps)
+            {
+                SetEnvIfNotEmpty("VOICEVOX_EXE_PATH", s.VoicevoxExePath);
+                SetEnvIfNotEmpty("PURUPURU_PATH", s.PurupuruPath);
+                messages.Add("外部アプリのパスを保存しました (ユーザー環境変数)");
             }
 
             if (opts.SaveX)
