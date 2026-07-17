@@ -118,6 +118,14 @@ public record AppConfig
     /// <summary>実況対象ウィンドウのタイトル(部分一致)。Python版 game_commentary.py の WINDOW_TITLE_FRAGMENT 相当</summary>
     public string GameWindowTitle { get; init; } = "";
 
+    /// <summary>
+    /// キャプチャ方式 ("wgc" | "printwindow")。環境変数 CAPTURE_METHOD。
+    /// 既定の wgc は Windows.Graphics.Capture (OBS の「Windows 10 (1903以降)」と同じ) で、
+    /// 管理者権限のウィンドウ・隠れたウィンドウ・GPU描画のいずれも撮れる。
+    /// printwindow は従来方式 (Windows 10 1903 未満へのフォールバック)。
+    /// </summary>
+    public string CaptureMethod { get; init; } = "wgc";
+
     /// <summary>禁止ワード (含まれていたら投稿・発話を破棄して作り直し)</summary>
     public IReadOnlyList<string> BannedWords { get; init; } = new[] { "死ね", "殺す", "http://", "@" };
 
@@ -164,6 +172,7 @@ public record AppConfig
             YouTubeVideoId = Env("YT_VIDEO_ID", ""),
             YouTubeApiKey = Env("YOUTUBE_API_KEY", ""),
             GameWindowTitle = Env("WINDOW_TITLE_FRAGMENT", ""),
+            CaptureMethod = Env("CAPTURE_METHOD", "wgc"),
             XApiKey = Env("X_API_KEY", ""),
             XApiSecret = Env("X_API_SECRET", ""),
             XAccessToken = Env("X_ACCESS_TOKEN", ""),

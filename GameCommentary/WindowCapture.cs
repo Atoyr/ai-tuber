@@ -2,7 +2,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Text;
 
 namespace Medoz.GameCommentary;
 
@@ -12,6 +11,11 @@ namespace Medoz.GameCommentary;
 /// find_target_window / capture_window_image 相当)。Windows 専用。
 /// 見つからない場合は可視ウィンドウのタイトル一覧付きの例外を投げる
 /// (AudioPlayer のデバイス未発見時と同じ UX)。
+///
+/// 制約: PrintWindow は対象ウィンドウへ WM_PRINT を送る方式のため、
+/// **対象が自プロセスより高い整合性レベル(管理者権限)で動いている場合、UIPI に阻まれて
+/// ERROR_ACCESS_DENIED(5) で失敗する**。管理者権限で動くゲームを撮るには
+/// <see cref="WgcWindowCapture"/> (WGC) を使うこと (既定はそちら)。
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class WindowCapture : IWindowCapture
@@ -27,29 +31,13 @@ public sealed class WindowCapture : IWindowCapture
     /// </summary>
     public WindowCapture(string titleFragment, int maxWidth = 800)
     {
-        if (string.IsNullOrEmpty(titleFragment))
-        {
-            throw new ArgumentNullException(nameof(titleFragment), "ウィンドウタイトルの一部を指定してください。");
-        }
         _maxWidth = maxWidth;
-
-        var windows = EnumerateVisibleWindows();
-        var match = windows.FirstOrDefault(w => w.Title.Contains(titleFragment, StringComparison.Ordinal));
-        if (match.Handle == IntPtr.Zero)
-        {
-            string titles = string.Join(", ", windows.Select(w => $"'{w.Title}'"));
-            throw new InvalidOperationException(
-                $"'{titleFragment}' を含むウィンドウが見つかりません。\n" +
-                $"現在開いているウィンドウ一覧: [{titles}]\n" +
-                $"ウィンドウタイトルの一部をこの中の文字列に書き換えてください。");
-        }
-        _hWnd = match.Handle;
-        TargetTitle = match.Title;
+        (_hWnd, TargetTitle) = WindowFinder.Find(titleFragment);
     }
 
     /// <summary>可視で空でないタイトルを持つウィンドウの一覧を返す。</summary>
     public static IReadOnlyList<string> GetVisibleWindowTitles()
-        => EnumerateVisibleWindows().Select(w => w.Title).ToList();
+        => WindowFinder.GetVisibleWindowTitles();
 
     /// <inheritdoc />
     public byte[] CaptureJpeg()
@@ -75,7 +63,7 @@ public sealed class WindowCapture : IWindowCapture
                 // PW_RENDERFULLCONTENT(0x2): DWM 合成のモダンアプリでも中身を取得する
                 if (!PrintWindow(_hWnd, hdc, PW_RENDERFULLCONTENT))
                 {
-                    throw new InvalidOperationException("PrintWindow によるキャプチャに失敗しました。");
+                    throw new InvalidOperationException(BuildPrintWindowError(Marshal.GetLastWin32Error()));
                 }
             }
             finally
@@ -94,6 +82,23 @@ public sealed class WindowCapture : IWindowCapture
         return EncodeJpeg(resized);
     }
 
+    /// <summary>
+    /// PrintWindow 失敗時のメッセージ。Win32 エラーコードを含め、原因が特定しやすい
+    /// ERROR_ACCESS_DENIED(5) には対処方法まで書く (原因不明の「失敗しました」を残さない)。
+    /// </summary>
+    internal static string BuildPrintWindowError(int win32Error)
+    {
+        const int ERROR_ACCESS_DENIED = 5;
+        string message = $"PrintWindow によるキャプチャに失敗しました (Win32 error {win32Error})。";
+        if (win32Error == ERROR_ACCESS_DENIED)
+        {
+            message += "\n対象ウィンドウが管理者権限で動いている可能性があります " +
+                       "(この方式は自プロセスより高い整合性レベルのウィンドウを撮れません)。\n" +
+                       $"CAPTURE_METHOD={WindowCaptureFactory.Wgc} (既定) にすればこの制約はありません。";
+        }
+        return message;
+    }
+
     /// <summary>JPEG 品質80でエンコードしてバイト列を返す (Python版: quality=80)。</summary>
     private static byte[] EncodeJpeg(Bitmap bitmap)
     {
@@ -107,54 +112,15 @@ public sealed class WindowCapture : IWindowCapture
         return ms.ToArray();
     }
 
-    private static List<(IntPtr Handle, string Title)> EnumerateVisibleWindows()
-    {
-        var result = new List<(IntPtr, string)>();
-        EnumWindows((hWnd, _) =>
-        {
-            if (!IsWindowVisible(hWnd))
-            {
-                return true;
-            }
-            int length = GetWindowTextLength(hWnd);
-            if (length <= 0)
-            {
-                return true;
-            }
-            var sb = new StringBuilder(length + 1);
-            GetWindowText(hWnd, sb, sb.Capacity);
-            string title = sb.ToString();
-            if (!string.IsNullOrEmpty(title))
-            {
-                result.Add((hWnd, title));
-            }
-            return true;
-        }, IntPtr.Zero);
-        return result;
-    }
-
     // ==== Win32 P/Invoke ====
 
     private const uint PW_RENDERFULLCONTENT = 0x00000002;
 
-    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetWindowTextLength(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool IsWindowVisible(IntPtr hWnd);
-
     [DllImport("user32.dll")]
     private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
-    [DllImport("user32.dll")]
+    // SetLastError: 失敗理由 (特に ERROR_ACCESS_DENIED) をメッセージに出すため必須
+    [DllImport("user32.dll", SetLastError = true)]
     private static extern bool PrintWindow(IntPtr hWnd, IntPtr hdcBlt, uint nFlags);
 
     [StructLayout(LayoutKind.Sequential)]

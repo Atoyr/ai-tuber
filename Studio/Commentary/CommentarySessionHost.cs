@@ -39,6 +39,7 @@ public sealed class CommentarySessionHost : IAsyncDisposable
     private CancellationTokenSource? _cts;
     private Task? _runTask;
     private VoicevoxSpeaker? _speaker;
+    private IWindowCapture? _capture;
     private string? _window;
     private DateTimeOffset? _startedAt;
     private bool _faulted;
@@ -109,12 +110,13 @@ public sealed class CommentarySessionHost : IAsyncDisposable
             var effective = SettingsMerger.Merge(config, studio);
 
             // --- 対象ウィンドウ (見つからなければ可視ウィンドウ一覧付き例外をそのまま返す) ---
+            // 方式は CAPTURE_METHOD (既定 wgc)。wgc は管理者権限で動くゲームも撮れる
             IWindowCapture capture;
             try
             {
-                capture = new WindowCapture(window, config.MaxImageWidth);
+                capture = WindowCaptureFactory.Create(config.CaptureMethod, window, config.MaxImageWidth);
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
             {
                 throw new LiveSessionHostException(400, ex.Message);
             }
@@ -150,6 +152,7 @@ public sealed class CommentarySessionHost : IAsyncDisposable
             var cts = new CancellationTokenSource();
             _cts = cts;
             _speaker = speaker;
+            _capture = capture;
             _window = capture.TargetTitle;
             _startedAt = DateTimeOffset.Now;
             _faulted = false;
@@ -204,6 +207,7 @@ public sealed class CommentarySessionHost : IAsyncDisposable
         CancellationTokenSource? cts;
         Task? runTask;
         VoicevoxSpeaker? speaker;
+        IWindowCapture? capture;
         lock (_lock)
         {
             if (_runTask is null)
@@ -213,6 +217,7 @@ public sealed class CommentarySessionHost : IAsyncDisposable
             cts = _cts;
             runTask = _runTask;
             speaker = _speaker;
+            capture = _capture;
         }
 
         cts!.Cancel();
@@ -223,11 +228,13 @@ public sealed class CommentarySessionHost : IAsyncDisposable
         finally
         {
             speaker?.Dispose(); // AudioPlayer もここで破棄される
+            (capture as IDisposable)?.Dispose(); // WGC は D3D デバイスを持つ
             lock (_lock)
             {
                 _cts = null;
                 _runTask = null;
                 _speaker = null;
+                _capture = null;
                 _window = null;
                 _startedAt = null;
             }
