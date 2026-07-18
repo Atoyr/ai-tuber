@@ -15,6 +15,9 @@ public sealed class SetupSettings
     public string OpenAIApiKey { get; set; } = "";
     public string OpenAIModel { get; set; } = "gpt-4o";
 
+    // ペルソナ (空欄 = 未設定 = 同梱サンプル personas/default で起動)
+    public string PersonaDir { get; set; } = "";
+
     // VOICEVOX
     public string VoicevoxUrl { get; set; } = "http://127.0.0.1:50021";
     public int SpeakerId { get; set; } = 3;

@@ -33,7 +33,7 @@
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <TextBlock Text="AITuber 初期セットアップ" FontSize="20" FontWeight="Bold"/>
             <TextBlock Style="{StaticResource HintStyle}"
-                       Text="LLM の API キー / VOICEVOX / X (Twitter) 認証情報を設定します。各タブの右上の「この項目を保存しない (スキップ)」にチェックを入れると、そのタブは保存対象から外れます。設定はユーザー環境変数として書き込まれるため、新しく起動したアプリから有効になります。"/>
+                       Text="LLM の API キー / ペルソナ / VOICEVOX / X (Twitter) 認証情報を設定します。各タブの右上の「この項目を保存しない (スキップ)」にチェックを入れると、そのタブは保存対象から外れます。設定はユーザー環境変数として書き込まれるため、新しく起動したアプリから有効になります。"/>
         </StackPanel>
 
         <!-- フッタ -->
@@ -87,6 +87,35 @@
 
                         <TextBlock Style="{StaticResource HintStyle}" Margin="0,8,0,0"
                                    Text="※ 使わないプロバイダのキーは空のままで構いません。空欄のキーは保存時にスキップされ、既存の環境変数を上書きしません。"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ペルソナ -->
+            <TabItem Header="ペルソナ">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12">
+                        <CheckBox x:Name="SkipPersona" Content="この項目を保存しない (スキップ)"
+                                  Margin="0,0,0,8"/>
+
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="キャラ人格 (ペルソナパッケージ) のディレクトリを指定します。未設定なら同梱サンプル (personas/default) で起動します。ぽとふ等の外部ペルソナは、ペルソナリポジトリを clone してそのフォルダを指定してください (例: ../ai-tuber-potofu)。"/>
+
+                        <TextBlock Text="ペルソナディレクトリ (PERSONA_DIR)" Style="{StaticResource LabelStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox x:Name="PersonaDirBox" Width="480"/>
+                            <Button Content="参照..." Margin="8,0,0,0" Padding="10,2" Click="BrowsePersonaDir_Click"/>
+                            <Button Content="確認" Margin="8,0,0,0" Padding="10,2" Click="CheckPersona_Click"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource HintStyle}"
+                                   Text="相対パスは各アプリの実行ディレクトリ (リポジトリルート) 基準で解決されます。空欄は保存時にスキップされ、既存の環境変数を上書きしません。"/>
+
+                        <TextBlock Text="現在のペルソナ" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="PersonaPreviewBox" IsReadOnly="True" TextWrapping="Wrap"
+                                 AcceptsReturn="True" MinHeight="160" VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas" Background="#FAFAFA"/>
+                        <TextBlock Style="{StaticResource HintStyle}" Margin="0,4,0,0"
+                                   Text="※ 話者ID・感情スタイルは persona.json の値です。VOICEVOX タブ (環境変数) で設定するとそちらが優先されます。"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
