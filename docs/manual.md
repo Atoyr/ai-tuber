@@ -327,7 +327,11 @@ dotnet run --project GameCommentary -- --window "VALORANT" --provider gemini
 
 **動作**
 
-- 12 秒間隔(`CaptureIntervalSec`)で対象ウィンドウをキャプチャ(Win32 `PrintWindow`)。処理にかかった時間を差し引いて間隔を保ちます。
+- 12 秒間隔(`CaptureIntervalSec`)で対象ウィンドウをキャプチャ。処理にかかった時間を差し引いて間隔を保ちます。
+- キャプチャ方式は既定で **Windows.Graphics.Capture**(OBS の「キャプチャ方法: Windows 10 (1903以降)」と同じ)。
+  管理者権限で動くゲーム・他ウィンドウに隠れたウィンドウ・GPU 描画のいずれも撮れます。
+  `--capture-method printwindow` / 環境変数 `CAPTURE_METHOD=printwindow` で従来の Win32 `PrintWindow` 方式に切り替えられます
+  (こちらは**管理者権限で動くウィンドウを撮れません**)。
 - 画像は幅 800px(`MaxImageWidth`)にリサイズし、JPEG 品質 80 でエンコードして LLM の Vision に渡します。
 - 直近 4 件(`CommentaryHistoryLimit`)の実況を文脈として渡し、繰り返しを防ぎます。
 - Vision に対応した LLM とモデルが必要です(Claude なら既定モデルで対応)。
@@ -473,7 +477,8 @@ dotnet test
   - 長時間接続で `PING`/`PONG` により切断されず、切断時は自動再接続すること。
 - **VB-CABLE → PuruPuruPNGTuber → OBS の口パク一連**: 実機で音声がアバターの口パクに反映されるか(Phase A の完了条件)。
 - **X 本番投稿(`TWEET_DRY_RUN=0`)**: 実アカウントへの投稿成功と、`data/memory.json` への記録・重複回避。
-- **ゲーム実況の実機キャプチャ**: 実際のゲームウィンドウで `PrintWindow` が中身を取得できるか(フルスクリーン/DWM 合成アプリでの挙動確認)。
+- **ゲーム実況の実機キャプチャ**: 実際のゲームウィンドウで既定の WGC 方式が中身を取得できるか
+  (ウィンドウモードでは管理者権限のゲームを含め確認済み。**フルスクリーン専有モードでの挙動は未確認**)。
 
 ---
 

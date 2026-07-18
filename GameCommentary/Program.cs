@@ -13,7 +13,9 @@ using Medoz.Voicevox;
 //   dotnet run --project GameCommentary -- --window "..." --no-voice # 発話せずコンソール出力のみ
 //   dotnet run --project GameCommentary -- --list-devices           # 出力デバイス一覧
 //   dotnet run --project GameCommentary -- --window "..." --provider gemini
+//   dotnet run --project GameCommentary -- --window "..." --capture-method printwindow # 従来方式
 // ウィンドウは --window / 位置引数 / 環境変数 WINDOW_TITLE_FRAGMENT の順で解決する。
+// キャプチャ方式は --capture-method / 環境変数 CAPTURE_METHOD の順 (既定 wgc)。
 
 // --list-devices は他の設定検証より前に処理する (環境変数なしでも動くようにする)
 if (args.Contains("--list-devices"))
@@ -69,6 +71,29 @@ if (windowArgIndex >= 0)
     windowArg = args[windowArgIndex + 1];
 }
 
+// --capture-method <wgc|printwindow> で環境変数 CAPTURE_METHOD を上書きできる
+int captureMethodIndex = Array.IndexOf(args, "--capture-method");
+if (captureMethodIndex >= 0)
+{
+    if (captureMethodIndex + 1 >= args.Length)
+    {
+        Console.WriteLine($"--capture-method には {WindowCaptureFactory.Wgc} / {WindowCaptureFactory.PrintWindow} のいずれかを指定してください。");
+        return 1;
+    }
+    config = config with { CaptureMethod = args[captureMethodIndex + 1] };
+}
+
+string captureMethod;
+try
+{
+    captureMethod = WindowCaptureFactory.NormalizeMethod(config.CaptureMethod);
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine(ex.Message);
+    return 1;
+}
+
 if (!new[] { "claude", "gemini", "openai" }.Contains(config.LlmProvider.ToLower()))
 {
     Console.WriteLine($"未知の LLM プロバイダです: {config.LlmProvider} (claude / gemini / openai のいずれかを指定してください)");
@@ -77,7 +102,7 @@ if (!new[] { "claude", "gemini", "openai" }.Contains(config.LlmProvider.ToLower(
 
 // フラグの値として消費した引数を除いた位置引数
 var consumed = new HashSet<string>();
-foreach (var flag in new[] { "--provider", "--device", "--window" })
+foreach (var flag in new[] { "--provider", "--device", "--window", "--capture-method" })
 {
     int idx = Array.IndexOf(args, flag);
     if (idx >= 0 && idx + 1 < args.Length)
@@ -128,8 +153,8 @@ var filter = new ModerationFilter(config.BannedWords);
 IWindowCapture capture;
 try
 {
-    capture = new WindowCapture(windowTitle, config.MaxImageWidth);
-    Console.WriteLine($"対象ウィンドウ: {capture.TargetTitle}");
+    capture = WindowCaptureFactory.Create(captureMethod, windowTitle, config.MaxImageWidth);
+    Console.WriteLine($"対象ウィンドウ: {capture.TargetTitle} (キャプチャ方式: {captureMethod})");
 }
 catch (Exception ex)
 {
@@ -195,6 +220,7 @@ catch (OperationCanceledException)
 finally
 {
     voicevoxSpeaker?.Dispose();
+    (capture as IDisposable)?.Dispose(); // WGC は D3D デバイスを持つ
     Console.WriteLine("ゲーム実況ループ終了");
 }
 
