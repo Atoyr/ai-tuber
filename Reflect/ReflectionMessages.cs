@@ -6,11 +6,15 @@ using Medoz.AiTuber.Core;
 
 namespace Medoz.Reflect;
 
-/// <summary>character.md の1つの見出しへの追記提案</summary>
+/// <summary>
+/// character.md の1つの見出しへの追記・修正提案。
+/// <paramref name="Replaces"/> が null なら新規追記、非 null なら既存のその記述を <paramref name="Add"/> に置き換える提案。
+/// </summary>
 public record PersonaProposal(
     [property: JsonPropertyName("section")] string Section,
     [property: JsonPropertyName("add")] string Add,
-    [property: JsonPropertyName("reason")] string Reason);
+    [property: JsonPropertyName("reason")] string Reason,
+    [property: JsonPropertyName("replaces")] string? Replaces = null);
 
 /// <summary>振り返り1回分の結果(気づき + 人格提案)</summary>
 public record ReflectionResult(
@@ -154,7 +158,15 @@ public static class ReflectionMessages
         {
             sb.AppendLine();
             sb.AppendLine($"### {p.Section}");
-            sb.AppendLine($"- **追記案**: {p.Add}");
+            if (string.IsNullOrWhiteSpace(p.Replaces))
+            {
+                sb.AppendLine($"- **追記案**: {p.Add}");
+            }
+            else
+            {
+                sb.AppendLine($"- **修正案**: {p.Add}");
+                sb.AppendLine($"- 置き換え対象: {p.Replaces}");
+            }
             sb.AppendLine($"- 理由: {p.Reason}");
         }
         return sb.ToString();
