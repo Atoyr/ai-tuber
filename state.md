@@ -114,9 +114,12 @@ maxTokens: COMMENTARY_MAX_TOKENS(既定 500。従来 150 固定)
 - [x] `docs/_config.yml` + `docs/index.md` 追加(Jekyll。node 不使用の方針どおり)
 - [x] `.github/workflows/pages.yml` 追加(docs/ を actions/jekyll-build-pages で公開。
       ai-tuber-blogs と同じ「Pages Source = GitHub Actions」方式)
-- [ ] ブランチにコミット → push → PR 作成
-- [ ] Pages を build_type=workflow で有効化(gh api)
-- [ ] PR マージ後に workflow が走り https://atoyr.github.io/ai-tuber/ が公開される(マージはユーザー)
+- [x] ブランチ `feat/game-commentary-context-and-docs-pages` に2コミット
+      (実況機能 26a291d / Pages+README b9a7542)→ push → PR #4 作成
+      https://github.com/Atoyr/ai-tuber/pull/4
+- [x] Pages を build_type=workflow で有効化済み(gh api。URL: https://atoyr.github.io/ai-tuber/)
+- [ ] PR #4 マージ後に pages.yml が走り https://atoyr.github.io/ai-tuber/ が公開される(**マージはユーザー**。
+      マージ後 Actions の「Deploy docs to GitHub Pages」が成功するか確認すること)
 
 ## メモ(再開時に読む)
 
