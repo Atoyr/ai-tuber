@@ -115,6 +115,20 @@ public record AppConfig
     public int CaptureIntervalSec { get; init; } = 12;
     public int MaxImageWidth { get; init; } = 800;
     public int CommentaryHistoryLimit { get; init; } = 4;
+
+    /// <summary>
+    /// 実況1回の生成 maxTokens (環境変数 COMMENTARY_MAX_TOKENS)。
+    /// Python版の 150 では日本語実況が単語レベルで途切れるため 500 に引き上げた
+    /// (docs/architecture.md の動作仕様表参照)。
+    /// </summary>
+    public int CommentaryMaxTokens { get; init; } = 500;
+
+    /// <summary>
+    /// 実況に使うゲーム知識の名前 (環境変数 GAME_KNOWLEDGE)。
+    /// ペルソナパッケージの knowledge/&lt;name&gt;.md をシステムプロンプトに結合する。空なら知識なし。
+    /// </summary>
+    public string GameKnowledge { get; init; } = "";
+
     /// <summary>実況対象ウィンドウのタイトル(部分一致)。Python版 game_commentary.py の WINDOW_TITLE_FRAGMENT 相当</summary>
     public string GameWindowTitle { get; init; } = "";
 
@@ -173,6 +187,8 @@ public record AppConfig
             YouTubeApiKey = Env("YOUTUBE_API_KEY", ""),
             GameWindowTitle = Env("WINDOW_TITLE_FRAGMENT", ""),
             CaptureMethod = Env("CAPTURE_METHOD", "wgc"),
+            CommentaryMaxTokens = EnvInt("COMMENTARY_MAX_TOKENS", 500),
+            GameKnowledge = Env("GAME_KNOWLEDGE", ""),
             XApiKey = Env("X_API_KEY", ""),
             XApiSecret = Env("X_API_SECRET", ""),
             XAccessToken = Env("X_ACCESS_TOKEN", ""),

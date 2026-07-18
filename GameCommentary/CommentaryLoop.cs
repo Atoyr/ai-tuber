@@ -18,18 +18,26 @@ public class CommentaryLoop
     private readonly int _historyLimit;
     private readonly string _displayName;
     private readonly Action<string> _log;
+    private readonly int _maxTokens;
     private readonly List<string> _history = new();
 
     // Vision に渡す画像のメディアタイプ (WindowCapture は JPEG を返す)
     private const string ImageMediaType = "image/jpeg";
 
+    /// <summary>
+    /// 実況1回の生成 maxTokens の既定値。Python版の 150 では日本語実況が単語レベルで
+    /// 途切れるため 500 に引き上げた (AppConfig.CommentaryMaxTokens / COMMENTARY_MAX_TOKENS)。
+    /// </summary>
+    public const int DefaultMaxTokens = 500;
+
     /// <param name="log">
     /// [error] / [skip] の診断ログの出力先。省略時は Console.WriteLine (CLI の従来挙動)。
     /// Studio はここから SSE へ流す。
     /// </param>
+    /// <param name="maxTokens">実況1回の生成 maxTokens (AppConfig.CommentaryMaxTokens を渡す)。</param>
     public CommentaryLoop(IWindowCapture capture, Persona persona, ModerationFilter filter,
                           ISpeaker speaker, int historyLimit = 4, string displayName = "ぷる乃",
-                          Action<string>? log = null)
+                          Action<string>? log = null, int maxTokens = DefaultMaxTokens)
     {
         _capture = capture ?? throw new ArgumentNullException(nameof(capture));
         _persona = persona ?? throw new ArgumentNullException(nameof(persona));
@@ -38,6 +46,7 @@ public class CommentaryLoop
         _historyLimit = historyLimit;
         _displayName = displayName;
         _log = log ?? Console.WriteLine;
+        _maxTokens = maxTokens;
     }
 
     /// <summary>直近の実況履歴 (最大 historyLimit 件)。</summary>
@@ -57,7 +66,7 @@ public class CommentaryLoop
             string base64 = Convert.ToBase64String(imageBytes);
             var image = new ImageContent(ImageMediaType, base64);
             string userText = CommentaryMessages.BuildUserText(_history, _historyLimit);
-            comment = await _persona.GenerateWithImageAsync(image, userText, maxTokens: 150, ct);
+            comment = await _persona.GenerateWithImageAsync(image, userText, _maxTokens, ct);
         }
         catch (OperationCanceledException)
         {

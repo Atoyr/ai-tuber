@@ -13,10 +13,14 @@ public class Persona
 
     public string SystemPrompt { get; }
 
-    public Persona(IChatClient client, PersonaPackage package, string modeFile)
+    /// <param name="knowledgeName">
+    /// knowledge/&lt;name&gt;.md の知識をシステムプロンプト末尾に結合する (ゲーム実況のゲーム知識など)。
+    /// null なら従来どおり character.md + モード別md のみ。
+    /// </param>
+    public Persona(IChatClient client, PersonaPackage package, string modeFile, string? knowledgeName = null)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
-        SystemPrompt = package.BuildSystemPrompt(modeFile);
+        SystemPrompt = package.BuildSystemPrompt(modeFile, knowledgeName);
     }
 
     public async Task<string> GenerateAsync(IReadOnlyList<ChatMessage> messages,

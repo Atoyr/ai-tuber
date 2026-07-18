@@ -186,6 +186,7 @@ const startAllBtn = qs("start-all-btn");
 const liveStartBtn = qs("live-start-btn");
 const liveStopBtn = qs("live-stop-btn");
 const commentaryWindowSelect = qs("commentary-window");
+const commentaryGameInput = qs("commentary-game");
 const windowsRefreshBtn = qs("windows-refresh-btn");
 const commentaryStartBtn = qs("commentary-start-btn");
 const commentaryStopBtn = qs("commentary-stop-btn");
@@ -339,7 +340,8 @@ commentaryStartBtn.addEventListener("click", async () => {
     appendLog({ at: new Date().toISOString(), level: "error", message: "対象ウィンドウを選択してください (一覧が空なら「一覧更新」)" }, "log-error");
     return;
   }
-  await api.post("/api/commentary/start", { window });
+  const game = commentaryGameInput.value.trim();
+  await api.post("/api/commentary/start", game ? { window, game } : { window });
   refreshStatus();
 });
 

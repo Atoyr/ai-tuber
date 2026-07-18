@@ -14,8 +14,10 @@ using Medoz.Voicevox;
 //   dotnet run --project GameCommentary -- --list-devices           # 出力デバイス一覧
 //   dotnet run --project GameCommentary -- --window "..." --provider gemini
 //   dotnet run --project GameCommentary -- --window "..." --capture-method printwindow # 従来方式
+//   dotnet run --project GameCommentary -- --window "..." --game minecraft # knowledge/minecraft.md を実況コンテキストに使う
 // ウィンドウは --window / 位置引数 / 環境変数 WINDOW_TITLE_FRAGMENT の順で解決する。
 // キャプチャ方式は --capture-method / 環境変数 CAPTURE_METHOD の順 (既定 wgc)。
+// ゲーム知識は --game / 環境変数 GAME_KNOWLEDGE の順 (未指定なら知識なし)。
 
 // --list-devices は他の設定検証より前に処理する (環境変数なしでも動くようにする)
 if (args.Contains("--list-devices"))
@@ -71,6 +73,18 @@ if (windowArgIndex >= 0)
     windowArg = args[windowArgIndex + 1];
 }
 
+// --game <name> で環境変数 GAME_KNOWLEDGE を上書きできる (knowledge/<name>.md をコンテキストに使う)
+int gameArgIndex = Array.IndexOf(args, "--game");
+if (gameArgIndex >= 0)
+{
+    if (gameArgIndex + 1 >= args.Length)
+    {
+        Console.WriteLine("--game にはペルソナの knowledge/<name>.md の <name> を指定してください。");
+        return 1;
+    }
+    config = config with { GameKnowledge = args[gameArgIndex + 1] };
+}
+
 // --capture-method <wgc|printwindow> で環境変数 CAPTURE_METHOD を上書きできる
 int captureMethodIndex = Array.IndexOf(args, "--capture-method");
 if (captureMethodIndex >= 0)
@@ -102,7 +116,7 @@ if (!new[] { "claude", "gemini", "openai" }.Contains(config.LlmProvider.ToLower(
 
 // フラグの値として消費した引数を除いた位置引数
 var consumed = new HashSet<string>();
-foreach (var flag in new[] { "--provider", "--device", "--window", "--capture-method" })
+foreach (var flag in new[] { "--provider", "--device", "--window", "--capture-method", "--game" })
 {
     int idx = Array.IndexOf(args, flag);
     if (idx >= 0 && idx + 1 < args.Length)
@@ -146,7 +160,24 @@ string displayName = Environment.GetEnvironmentVariable("CHARACTER_NAME") is { L
 
 IChatClient chatClient = LLMClientFactory.CreateChatClient(config.LlmProvider, config.LlmApiKey, config.LlmModel);
 Console.WriteLine($"LLM: {config.LlmProvider} ({config.LlmModel})");
-var persona = new Persona(chatClient, personaPackage, "game_system.md");
+
+// ゲーム知識 (knowledge/<name>.md) を指定されていればシステムプロンプトに結合する。
+// 無い知識名なら利用可能一覧付きの例外で fail fast
+string? gameKnowledge = string.IsNullOrEmpty(config.GameKnowledge) ? null : config.GameKnowledge;
+Persona persona;
+try
+{
+    persona = new Persona(chatClient, personaPackage, "game_system.md", gameKnowledge);
+}
+catch (PersonaLoadException ex)
+{
+    Console.WriteLine(ex.Message);
+    return 1;
+}
+if (gameKnowledge is not null)
+{
+    Console.WriteLine($"ゲーム知識: {gameKnowledge}");
+}
 var filter = new ModerationFilter(config.BannedWords);
 
 // 対象ウィンドウを特定 (見つからなければ候補一覧付きで中止)
@@ -193,7 +224,8 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-var loop = new CommentaryLoop(capture, persona, filter, speaker, config.CommentaryHistoryLimit, displayName);
+var loop = new CommentaryLoop(capture, persona, filter, speaker, config.CommentaryHistoryLimit, displayName,
+                              maxTokens: config.CommentaryMaxTokens);
 
 Console.WriteLine("=== ゲーム実況ループ開始 (Ctrl+Cで終了) ===");
 try

@@ -25,6 +25,8 @@ public class AppConfigTests
         Assert.Equal(12, config.CaptureIntervalSec);
         Assert.Equal(800, config.MaxImageWidth);
         Assert.Equal(4, config.CommentaryHistoryLimit);
+        Assert.Equal(500, config.CommentaryMaxTokens);
+        Assert.Equal("", config.GameKnowledge); // 未指定 = 知識なしで従来どおり動く
         Assert.Equal(new[] { "死ね", "殺す", "http://", "@" }, config.BannedWords);
         Assert.Equal("personas/default", config.PersonaDir);
         Assert.Equal(Path.Combine("data", "potofu", "memory.json"), config.MemoryPathFor("potofu"));
@@ -50,6 +52,26 @@ public class AppConfigTests
             Environment.SetEnvironmentVariable("ANTHROPIC_API_KEY", null);
             Environment.SetEnvironmentVariable("TWEET_DRY_RUN", null);
             Environment.SetEnvironmentVariable("VOICEVOX_SPEAKER_ID", null);
+        }
+    }
+
+    [Fact]
+    public void LoadFromEnvironment_ReadsCommentarySettings()
+    {
+        try
+        {
+            Environment.SetEnvironmentVariable("COMMENTARY_MAX_TOKENS", "800");
+            Environment.SetEnvironmentVariable("GAME_KNOWLEDGE", "minecraft");
+
+            var config = AppConfig.LoadFromEnvironment();
+
+            Assert.Equal(800, config.CommentaryMaxTokens);
+            Assert.Equal("minecraft", config.GameKnowledge);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("COMMENTARY_MAX_TOKENS", null);
+            Environment.SetEnvironmentVariable("GAME_KNOWLEDGE", null);
         }
     }
 

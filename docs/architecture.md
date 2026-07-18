@@ -78,6 +78,8 @@ streaming は Anthropic の SSE (`"stream": true`) を `IAsyncEnumerable<string>
 | CAPTURE_INTERVAL_SEC | 12 | ゲーム実況のキャプチャ間隔 |
 | 画像リサイズ | 幅800px, JPEG q80 | トークン節約 |
 | 実況履歴 | 直近4件を文脈として渡す | 繰り返し防止 |
+| COMMENTARY_MAX_TOKENS | 500 | 実況1回の生成 maxTokens。**Python版の150から意図的に変更**(日本語実況が単語レベルで途切れるため。プロンプトも1〜2文→3〜5文に変更済み) |
+| GAME_KNOWLEDGE | (空) | 実況に使うゲーム知識名。ペルソナの `knowledge/<name>.md` をシステムプロンプトに結合(persona-architecture.md 参照) |
 
 ## ゲーム実況のキャプチャ方式
 

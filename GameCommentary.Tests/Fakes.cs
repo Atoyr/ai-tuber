@@ -16,6 +16,7 @@ internal sealed class FakeChatClient : IChatClient
     public int CallCount { get; private set; }
     public List<string> ReceivedTexts { get; } = new();
     public List<ImageContent> ReceivedImages { get; } = new();
+    public List<int> ReceivedMaxTokens { get; } = new();
 
     public FakeChatClient(params string[] replies)
     {
@@ -28,6 +29,7 @@ internal sealed class FakeChatClient : IChatClient
         CallCount++;
         ReceivedImages.Add(image);
         ReceivedTexts.Add(text);
+        ReceivedMaxTokens.Add(maxTokens);
         if (_replies.Count > 0)
         {
             _last = _replies.Dequeue();

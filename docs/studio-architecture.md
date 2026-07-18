@@ -143,7 +143,8 @@ POST /api/live/start         → body: { source: "manual"|"twitch"|"youtube", ta
 POST /api/live/stop          → 配信メモ保存まで行って停止 (Ctrl+C 相当)
 POST /api/live/comment       → body: { author: "テスト", text: "こんにちは" } (ManualCommentSource へ注入)
 GET  /api/windows            → 可視ウィンドウのタイトル一覧 (ゲーム実況の対象選択用)
-POST /api/commentary/start   → body: { window: "<タイトル片>" } (ウィンドウキャプチャ→Vision実況→発話)
+POST /api/commentary/start   → body: { window: "<タイトル片>", game?: "<知識名>" } (ウィンドウキャプチャ→Vision実況→発話。
+                               game はペルソナの knowledge/<名前>.md を実況コンテキストに結合する任意指定)
 POST /api/commentary/stop    → ゲーム実況の停止
 GET  /api/settings           → 現在の実効設定 (シークレットは "set"/"unset" のみ)
 PUT  /api/settings           → 変更項目のみ受け取り studio.json 更新 + 反映可能なものは即時反映
