@@ -14,6 +14,9 @@ internal sealed class FakeChatClient : IChatClient
 
     public int CallCount { get; private set; }
 
+    /// <summary>直近の GenerateAsync に渡されたメッセージ列(履歴の組み立て検証用)</summary>
+    public IReadOnlyList<ChatMessage>? LastMessages { get; private set; }
+
     public FakeChatClient(params string[] replies)
     {
         _replies = new Queue<string>(replies);
@@ -23,6 +26,7 @@ internal sealed class FakeChatClient : IChatClient
                                       int maxTokens = 300, CancellationToken ct = default)
     {
         CallCount++;
+        LastMessages = messages.ToList();
         if (_replies.Count > 0)
         {
             _last = _replies.Dequeue();
