@@ -60,8 +60,12 @@ public sealed class CommentarySessionHost : IAsyncDisposable
         }
     }
 
-    /// <summary>実況セッションを開始する。二重 start は 409。設定不備は 400。</summary>
-    public CommentaryStatus Start(string? windowTitle)
+    /// <summary>
+    /// 実況セッションを開始する。二重 start は 409。設定不備は 400。
+    /// game を指定するとペルソナの knowledge/&lt;game&gt;.md をシステムプロンプトに結合する
+    /// (無い知識名なら利用可能一覧付きの 400。未指定なら環境変数 GAME_KNOWLEDGE → 知識なし)。
+    /// </summary>
+    public CommentaryStatus Start(string? windowTitle, string? game = null)
     {
         lock (_lock)
         {
@@ -109,6 +113,23 @@ public sealed class CommentarySessionHost : IAsyncDisposable
             config = config.ApplyPersona(personaPackage.Manifest);
             var effective = SettingsMerger.Merge(config, studio);
 
+            // --- LLM / ゲーム知識 (キャプチャ生成より前に検証し、失敗時にキャプチャを残さない) ---
+            IChatClient chatClient = LLMClientFactory.CreateChatClient(
+                config.LlmProvider, config.LlmApiKey, effective.LlmModel);
+
+            // ゲーム知識: リクエスト → 環境変数 GAME_KNOWLEDGE の順 (CLI の --game と同じ解決順)
+            string? knowledge = !string.IsNullOrWhiteSpace(game) ? game.Trim()
+                : (string.IsNullOrEmpty(config.GameKnowledge) ? null : config.GameKnowledge);
+            Persona persona;
+            try
+            {
+                persona = new Persona(chatClient, personaPackage, "game_system.md", knowledge);
+            }
+            catch (PersonaLoadException ex)
+            {
+                throw new LiveSessionHostException(400, ex.Message);
+            }
+
             // --- 対象ウィンドウ (見つからなければ可視ウィンドウ一覧付き例外をそのまま返す) ---
             // 方式は CAPTURE_METHOD (既定 wgc)。wgc は管理者権限で動くゲームも撮れる
             IWindowCapture capture;
@@ -121,10 +142,7 @@ public sealed class CommentarySessionHost : IAsyncDisposable
                 throw new LiveSessionHostException(400, ex.Message);
             }
 
-            // --- LLM / フィルタ / VOICEVOX / 出力デバイス ---
-            IChatClient chatClient = LLMClientFactory.CreateChatClient(
-                config.LlmProvider, config.LlmApiKey, effective.LlmModel);
-            var persona = new Persona(chatClient, personaPackage, "game_system.md");
+            // --- フィルタ / VOICEVOX / 出力デバイス ---
             var filter = new ModerationFilter(config.BannedWords);
             var voicevox = new VoicevoxClient(config.VoicevoxUrl);
 
@@ -147,7 +165,8 @@ public sealed class CommentarySessionHost : IAsyncDisposable
                 log: message => _onEvent(new CommentaryLogMessage(
                     DateTimeOffset.Now,
                     message.StartsWith("[error]", StringComparison.Ordinal) ? "error" : "info",
-                    message)));
+                    message)),
+                maxTokens: config.CommentaryMaxTokens);
 
             var cts = new CancellationTokenSource();
             _cts = cts;

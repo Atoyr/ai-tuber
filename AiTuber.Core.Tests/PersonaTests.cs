@@ -37,6 +37,21 @@ public class PersonaTests : IDisposable
     }
 
     [Fact]
+    public void SystemPrompt_IncludesKnowledge_WhenKnowledgeNameGiven()
+    {
+        string knowledgeDir = Path.Combine(_personaDir, "knowledge");
+        Directory.CreateDirectory(knowledgeDir);
+        File.WriteAllText(Path.Combine(knowledgeDir, "minecraft.md"), "マイクラの知識。");
+        File.WriteAllText(Path.Combine(_personaDir, "game_system.md"), "実況モードの指示。");
+        var package = PersonaPackage.Load(_personaDir);
+
+        var persona = new Persona(new StubChatClient(), package, "game_system.md", knowledgeName: "minecraft");
+
+        Assert.Equal("あなたはぷる乃です。\n\n---\n\n実況モードの指示。\n\n---\n\nマイクラの知識。",
+                     persona.SystemPrompt);
+    }
+
+    [Fact]
     public async Task GenerateAsync_PassesSystemPromptAndMessages_AndTrimsReply()
     {
         var stub = new StubChatClient { Reply = "  こんにちは!  \n" };

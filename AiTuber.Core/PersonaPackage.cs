@@ -165,7 +165,59 @@ public class PersonaPackage
         return File.ReadAllText(path);
     }
 
-    /// <summary>character.md (共通人格) + モード別指示 を結合してシステムプロンプトにする</summary>
-    public string BuildSystemPrompt(string modeFile)
-        => $"{CharacterPrompt}\n\n---\n\n{LoadModePrompt(modeFile)}";
+    /// <summary>知識ファイル (knowledge/&lt;name&gt;.md) を置く任意のサブディレクトリ名</summary>
+    public const string KnowledgeDirName = "knowledge";
+
+    /// <summary>
+    /// 利用可能な知識ファイル名 (拡張子なし) の一覧をソートして返す。
+    /// knowledge/ ディレクトリ自体が無ければ空 (知識はペルソナの任意要素)。
+    /// </summary>
+    public IReadOnlyList<string> ListKnowledge()
+    {
+        string dir = Path.Combine(DirectoryPath, KnowledgeDirName);
+        if (!Directory.Exists(dir))
+        {
+            return Array.Empty<string>();
+        }
+        return Directory.GetFiles(dir, "*.md")
+                        .Select(Path.GetFileNameWithoutExtension)
+                        .Where(n => !string.IsNullOrEmpty(n))
+                        .Select(n => n!)
+                        .OrderBy(n => n, StringComparer.Ordinal)
+                        .ToArray();
+    }
+
+    /// <summary>
+    /// 知識ファイル knowledge/&lt;name&gt;.md を読み込む。
+    /// 指定したのに無い場合は、利用可能な知識一覧付きの例外で fail fast
+    /// (ウィンドウ・デバイス未発見時と同じ UX 方針)。
+    /// </summary>
+    public string LoadKnowledge(string name)
+    {
+        string path = Path.Combine(DirectoryPath, KnowledgeDirName, name + ".md");
+        if (!File.Exists(path))
+        {
+            var available = ListKnowledge();
+            string hint = available.Count > 0
+                ? $"利用可能な知識: {string.Join(", ", available)}"
+                : $"このペルソナには {KnowledgeDirName}/ ディレクトリがありません。{KnowledgeDirName}/{name}.md を追加してください。";
+            throw new PersonaLoadException(
+                $"このペルソナ ({Manifest.Name}) には知識 \"{name}\" がありません: {Path.GetFullPath(path)}\n{hint}");
+        }
+        return File.ReadAllText(path);
+    }
+
+    /// <summary>
+    /// character.md (共通人格) + モード別指示 (+ 任意の知識) を結合してシステムプロンプトにする。
+    /// knowledgeName が null なら従来どおり2部構成 (後方互換)。
+    /// </summary>
+    public string BuildSystemPrompt(string modeFile, string? knowledgeName = null)
+    {
+        string prompt = $"{CharacterPrompt}\n\n---\n\n{LoadModePrompt(modeFile)}";
+        if (!string.IsNullOrEmpty(knowledgeName))
+        {
+            prompt += $"\n\n---\n\n{LoadKnowledge(knowledgeName)}";
+        }
+        return prompt;
+    }
 }

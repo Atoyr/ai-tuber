@@ -151,6 +151,8 @@ dotnet run --project Setup
 | 環境変数 | 既定値 | 必須/任意 | 意味 |
 |---|---|---|---|
 | `WINDOW_TITLE_FRAGMENT` | (空) | 任意 | ゲーム実況の対象ウィンドウタイトル(部分一致) |
+| `GAME_KNOWLEDGE` | (空) | 任意 | ゲーム実況に使う知識名。ペルソナの `knowledge/<名前>.md` をシステムプロンプトに結合 |
+| `COMMENTARY_MAX_TOKENS` | `500` | 任意 | 実況 1 回の生成 maxTokens(小さすぎると実況が途切れる) |
 | `CHARACTER_NAME` | persona.json の `name` | 任意 | コンソールログに表示するキャラ名の上書き(人格そのものではない。人格は `$PERSONA_DIR/character.md`) |
 
 ### 3.6 設定例(PowerShell)
@@ -310,6 +312,9 @@ dotnet run --project GameCommentary -- --list-devices
 
 # LLM 切り替え
 dotnet run --project GameCommentary -- --window "VALORANT" --provider gemini
+
+# ゲーム知識を渡す (ペルソナの knowledge/minecraft.md をコンテキストに結合)
+dotnet run --project GameCommentary -- --window "Minecraft" --game minecraft
 ```
 
 **オプション一覧**
@@ -317,6 +322,7 @@ dotnet run --project GameCommentary -- --window "VALORANT" --provider gemini
 | オプション | 意味 |
 |---|---|
 | `--window <タイトルの一部>` | 実況対象ウィンドウをタイトル部分一致で指定 |
+| `--game <知識名>` | ペルソナの `knowledge/<知識名>.md` を実況コンテキストに結合(環境変数 `GAME_KNOWLEDGE` でも可) |
 | `--no-voice` | 発話せずコンソール出力のみ |
 | `--provider <claude\|gemini\|openai>` | LLM プロバイダを上書き |
 | `--device <名前>` | 出力デバイスを部分一致で指定 |
@@ -334,6 +340,10 @@ dotnet run --project GameCommentary -- --window "VALORANT" --provider gemini
   (こちらは**管理者権限で動くウィンドウを撮れません**)。
 - 画像は幅 800px(`MaxImageWidth`)にリサイズし、JPEG 品質 80 でエンコードして LLM の Vision に渡します。
 - 直近 4 件(`CommentaryHistoryLimit`)の実況を文脈として渡し、繰り返しを防ぎます。
+- 実況 1 回の生成 maxTokens は既定 500(環境変数 `COMMENTARY_MAX_TOKENS` で変更可)。
+  プロンプト(`game_system.md`)は 3〜5 文の実況を指示します(単語だけの応答にならないように)。
+- `--game <知識名>` を指定すると、ペルソナの `knowledge/<知識名>.md`(ゲームのルール・用語など)が
+  システムプロンプトに結合され、知識を踏まえた実況になります(docs/persona-architecture.md 参照)。
 - Vision に対応した LLM とモデルが必要です(Claude なら既定モデルで対応)。
 - `Ctrl+C` で終了します。
 
@@ -385,7 +395,8 @@ $env:VOICEVOX_EMOTION_STYLES = "joy=1,sad=22,angry=7"
 | `character.md` | **共通人格 = キャラの魂**(名前・一人称・口調・性格・生活背景・感情タグ規約・禁止事項)。すべてのモードで読み込まれる唯一の真実 |
 | `live_system.md` | 配信モード専用の指示(2〜3 文で返す、記号を使わない、複数コメントから 1 つ選ぶ、感情タグを先頭に付ける等) |
 | `tweet_system.md` | ツイートモード専用の指示(生活感の出し方、140 字以内、JSON 形式で出力する等) |
-| `game_system.md` | ゲーム実況モード専用の指示(画面を見て 1〜2 文で実況、繰り返し回避等) |
+| `game_system.md` | ゲーム実況モード専用の指示(画面を見て 3〜5 文で実況、繰り返し回避等) |
+| `knowledge/<名前>.md` | ゲーム知識(任意)。`--game <名前>` / `GAME_KNOWLEDGE` で実況コンテキストに結合 |
 
 各モードは「character.md + そのモードの system md」を結合してシステムプロンプトにします。口調や設定を変えたいときは `character.md` を、モードごとの振る舞いを変えたいときは各 system md を編集してください。別人格に切り替えるときは `PERSONA_DIR` を別のペルソナディレクトリに向けます。
 

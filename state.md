@@ -1,61 +1,127 @@
-# 作業状態 (state.md)
+# 作業ステート: ゲーム実況の長文化 + 実況コンテキスト設計
 
-目標: Phase E〜H を最終フェーズまで実装し、全ユニットテストが通ること。開発は Opus サブエージェントに指示して実施。完了後にマニュアル作成。
+作業が中断しても再開できるよう、設計・タスク・進捗をここに記録する。
+(旧内容 = Phase E〜H 実装ログは 2026-07-12 に完了・コミット済みのため置き換えた。
+残っていた手動テスト項目は docs/implementation-plan.md / docs/manual.md 側に記載がある)
 
-このファイルは作業再開用の記録。各ステップ開始時・完了時に更新する。
+## 依頼内容 (2026-07-18)
 
-## タスク一覧
+1. ゲーム実況で単語しか出ない → 実況らしい長文になるようにする
+2. ペルソナ(人格)・知識の外部リポジトリ読み込みの現状実装を整理し、
+   実況時に渡すべきコンテキストを設計する
+3. テスト駆動で実装する
 
-- [x] 0. ベースライン確認: `dotnet build` / `dotnet test` が現状で通ること(2026-07-11: ビルド成功・テスト54件全パス。実ターゲットは net10.0)
-- [x] 1. Phase E: `YouTubeCommentSource` 実装完了(Data API v3 を HttpClient 直叩き、pollingIntervalMillis 準拠、`--youtube` オプション、テスト16件追加・全パス。実配信での動作テストのみ手動で要実施)
-- [x] 2. Phase F: `TwitterBot/` + `TwitterBot.Tests/` 実装完了(dry-run デフォルト=TWEET_DRY_RUN、--once、9〜24時制限、180〜360分間隔、検証3回リトライ。テスト29件追加、全99件パス)
-- [x] 3. Phase G: `GameCommentary/` + `GameCommentary.Tests/` 実装完了(WindowCapture=Win32 P/Invoke、12秒ループ、履歴4件、prompts/game_system.md 追加、--no-voice。テスト16件追加、全115件パス)
-- [x] 4. Phase H: 品質向上完了(SentenceSplitter / TtsPipeline(Channels 2キュー) / EmotionTagParser+スタイルマップ / CommentSelector。Live は streaming 既定・`--no-stream` で旧経路。テスト全146件パス)
-- [x] 5. 全体検証完了: ビルド0エラー、テスト146件全パス(MultiLLM 15 / Voicevox 28 / TwitterBot 29 / Live 28 / Core 30 / GameCommentary 16)。implementation-plan.md の未チェックは Phase E「動作テスト(実配信枠)」のみ=実配信が必要な手動作業
-- [x] 6. マニュアル作成完了: `docs/manual.md`(471行、10章: セットアップ/環境変数/各モード実行/感情タグ/カスタマイズ/トラブルシューティング等)。README にリンク追加
+## 原因分析(調査済み)
 
-## 進捗ログ
+- `GameCommentary/CommentaryLoop.cs` の `RunOnceAsync` が `maxTokens: 150` を**ハードコード**
+  (Python版 `game_commentary.py` の値をそのまま移植)。日本語で 150 出力トークンはかなり短く、
+  Gemini 系プロバイダでは thinking トークンがこの上限を食うためさらに短くなる/途切れる
+- `game_system.md`(default / potofu 両ペルソナ)が「明るく**簡潔に、1〜2文**の日本語で」と
+  指示しており、モデルが最短応答を選ぶ
+- 実況コンテキストに「何のゲームか・どんなゲームか」の知識が無く、画面から読み取れる
+  断片的な単語しか話す材料が無い
 
-- 2026-07-11: 作業開始。タスク化と state.md 作成。
-- 2026-07-11: ステップ0完了。ビルドOK・全テストパス(Voicevox 8 / MultiLLM 15 / Core 27 / Live 4)。注意: CLAUDE.md は .NET 8 表記だが実際は net10.0。新規プロジェクトは net10.0 に合わせる。
-- 2026-07-11: ステップ1(Phase E)開始。Opus サブエージェントに YouTubeCommentSource 実装を指示。
-- 2026-07-11: ステップ1完了。Live/YouTubeCommentSource.cs 追加、AppConfig に YOUTUBE_API_KEY、Program.cs に --youtube。テスト全パス(Live 20/Voicevox 8/MultiLLM 15/Core 27)。初回ページはスキップ(接続以降の新規のみ)。
-- 2026-07-11: ステップ2(Phase F: TwitterBot)開始。Opus サブエージェントに指示。
-- 2026-07-11: ステップ2完了。TwitterBot/TwitterBot.Tests を sln に追加。文字数はコードポイント数(EnumerateRunes)で判定。実投稿は Medoz.X.XClient(OAuth2, X_ACCESS_TOKEN)。全99テストパス。
-- 2026-07-11: ステップ3(Phase G: GameCommentary)開始。Opus サブエージェントに指示。
-- 2026-07-11: ステップ3完了。net10.0-windows、IWindowCapture/ISpeaker で分離しテスト可能に。ウィンドウ指定は WINDOW_TITLE_FRAGMENT env / --window。全115テストパス。
-- 2026-07-11: ステップ4(Phase H: 品質向上)開始。Opus サブエージェントに指示。
-- 2026-07-11: ステップ4完了。共通部品は Voicevox プロジェクトに集約(SentenceSplitter/EmotionTag/TtsPipeline)、CommentSelector は Live。感情タグ規約を prompts/character.md に追記。VOICEVOX_EMOTION_STYLES env で上書き可。全146テストパス。
-- 2026-07-11: ステップ5(全体検証)開始。
-- 2026-07-11: ステップ5完了。全146テストパスを自分でも再確認。
-- 2026-07-11: ステップ6(マニュアル作成)開始。Opus サブエージェントに指示。
-- 2026-07-12: ステップ6完了。ビルド0エラー・テスト146件全パス・マニュアル作成済み。
-- 2026-07-12: ユーザー指示で追加タスク。全変更を d314052 でコミット・プッシュ済み。配信は YouTube より Twitch がメインとのことで Twitch 対応(ステップ8)開始。Opus サブエージェントに指示。
-- 2026-07-12: ステップ8完了。Live/TwitchCommentSource.cs(IRC 行パースは static メソッドに分離しテスト可能、接続は Func<CancellationToken, Stream> 注入)+ Live.Tests/TwitchCommentSourceTests.cs(26件)。Live.Tests 54件、全体172件全パス。ステップ9でコミット・プッシュ。
+## 設計
 
-## 手動テスト(Twitch)
+### 実況1回あたりのコンテキスト構成(今回の設計)
 
-- 実チャンネルでの接続確認: `dotnet run --project Live -- --twitch <チャンネル名>` を配信中のチャンネルで実行し、コメント取得→応答→発話を確認する(implementation-plan.md Phase E の未チェック項目)
+```
+system: character.md(人格・口調・感情タグ規約)
+        + game_system.md(実況ルール: 長さ・構成・繰り返し回避)
+        + knowledge/<name>.md(ゲーム知識。任意。--game / GAME_KNOWLEDGE で選択)
+user:   直近の実況 最大4件(繰り返し回避の文脈)+ 実況依頼
+image:  対象ウィンドウのキャプチャ(幅800px JPEG q80)
+maxTokens: COMMENTARY_MAX_TOKENS(既定 500。従来 150 固定)
+```
 
-## 追加タスク(2026-07-12 ユーザー指示)
+### ペルソナパッケージ契約の拡張(後方互換・任意)
 
-- [x] 7. 全変更をコミット・プッシュ(d314052 として push 済み)
-- [x] 8. Twitch ライブ配信対応完了: `TwitchCommentSource`(Twitch IRC 匿名接続=justinfan・APIキー不要、TLS 6697、PING/PONG、自動再接続、チャンネル名/URL 正規化)+ `--twitch <channel|URL>` オプション + テスト26件 + architecture.md / manual.md 更新。全172テストパス
-- [x] 9. Twitch 対応をコミット・プッシュ済み
+`<persona-dir>/knowledge/*.md` を追加。1ファイル = 1ゲーム(または1トピック)の知識。
+ゲームのルール・登場人物・用語・実況で触れると良いポイントなどを書く。
+エンジンは `--game <name>` / 環境変数 `GAME_KNOWLEDGE`(Studio は start リクエストの `game`)で
+`knowledge/<name>.md` を選択し、システムプロンプト末尾に結合する。
+未指定なら従来どおり(knowledge ディレクトリが無くてもよい)。
+指定したのに無い場合は、利用可能な知識ファイル一覧付きで fail fast(既存の UX 方針)。
 
-## 残作業(手動・任意)
+### 変更点一覧
 
-- 将来実装(ロードマップ記載済み): Twitch チャットへのコメント投稿 = architecture.md「将来ロードマップ」Phase 7(OAuth 2.0 必須: chat:edit / user:write:chat、ICommentPoster 抽象、dry-run デフォルト)
+| ファイル | 変更 |
+|---|---|
+| `AiTuber.Core/PersonaPackage.cs` | `ListKnowledge()` / `LoadKnowledge(name)` / `BuildSystemPrompt(modeFile, knowledgeName)` 追加 |
+| `AiTuber.Core/Persona.cs` | コンストラクタに `knowledgeName` 任意引数 |
+| `AiTuber.Core/AppConfig.cs` | `CommentaryMaxTokens`(env `COMMENTARY_MAX_TOKENS`, 既定500)/ `GameKnowledge`(env `GAME_KNOWLEDGE`)追加 |
+| `GameCommentary/CommentaryLoop.cs` | maxTokens をコンストラクタ注入(既定500) |
+| `GameCommentary/Program.cs` | `--game <name>` フラグ + maxTokens 配線 |
+| `Studio/Program.cs` | `CommentaryStartRequest` に `Game` 追加 |
+| `Studio/Commentary/CommentarySessionHost.cs` | `Start(window, game)` で knowledge 付き Persona 構築 + maxTokens 配線 |
+| `Studio/wwwroot/index.html` `app.js` | 実況パネルにゲーム知識名の入力欄(任意) |
+| `personas/default/game_system.md` | 長文実況用に書き換え(3〜5文、構成指示) |
+| `personas/default/knowledge/sample-game.md` | 知識ファイルの実例(生きた契約ドキュメント) |
+| `../ai-tuber-potofu/game_system.md` | 同様に書き換え(**別リポジトリ。commit/push はユーザー**) |
+| `docs/persona-architecture.md` | knowledge/ 契約を追記 |
+| `docs/architecture.md` | 動作仕様表の実況 maxTokens 等を更新 |
+| `docs/studio-architecture.md` | /api/commentary/start の body に game 追記 |
 
-- Phase E「動作テスト(実配信枠 or 限定公開)」— YouTube の実ライブ配信が必要なため自動化不可。手順は docs/manual.md の「未実施の手動テスト」参照
-- マニュアル執筆中に見つかった軽微な不整合(コード未修正・要判断):
-  1. X 認証の環境変数名が TwitterBot(X_API_KEY 系)と PostX(X_CONSUMER_KEY 系)で不一致(Setup は両方に書き込むため実害なし)
-  2. TwitterBot の XTweetPoster は OAuth2 で X_ACCESS_SECRET を RefreshToken 相当として使用(変則的)
-  3. CLAUDE.md の見出しが「.NET 8」のまま(実体は net10.0)
+## テスト計画(TDD: 先にテスト → 実装)
 
-## 実施メモ(再開時に読む)
+- `AiTuber.Core.Tests/PersonaPackageTests`
+  - knowledge あり: `LoadKnowledge("mygame")` が内容を返す
+  - `BuildSystemPrompt("game_system.md", "mygame")` が知識を末尾に結合
+  - knowledgeName 未指定/null: 従来と同一出力(後方互換)
+  - 指定したのに無い: 利用可能一覧付き `PersonaLoadException`
+  - knowledge ディレクトリ自体が無い: 明確なメッセージで例外 / `ListKnowledge()` は空
+- `AiTuber.Core.Tests/PersonaTests`
+  - knowledgeName 付き Persona の SystemPrompt に知識が含まれる
+- `AiTuber.Core.Tests/AppConfigTests`
+  - 既定値 `CommentaryMaxTokens == 500`、env `COMMENTARY_MAX_TOKENS` / `GAME_KNOWLEDGE` の読み込み
+- `GameCommentary.Tests/CommentaryLoopTests`(+ FakeChatClient に maxTokens 記録を追加)
+  - 既定で maxTokens 500 が IChatClient に渡る
+  - コンストラクタ指定した maxTokens が渡る
 
-- 実装の正解仕様: `reference/python_v2/` と `docs/architecture.md` の動作仕様表
-- 開発は Opus サブエージェント(Agent tool, model: opus)に指示して行う方針(ユーザー指定)
-- 新規プロジェクトは `dotnet sln add` を忘れない
-- dry-run デフォルト、人格は prompts/*.md のみ、ModerationFilter 共通利用、Medoz.* 名前空間
+## 進捗チェックリスト
+
+- [x] 現状調査(原因特定・関連コード読了)
+- [x] 設計(本ファイル)
+- [x] テスト追加(red 確認済み: 13 コンパイルエラー)
+- [x] AiTuber.Core 実装(PersonaPackage.ListKnowledge/LoadKnowledge/BuildSystemPrompt 拡張、Persona knowledgeName、AppConfig CommentaryMaxTokens/GameKnowledge)
+- [x] GameCommentary 実装(CommentaryLoop maxTokens 注入、Program --game)
+- [x] Studio 実装(SessionHost Start(window, game) + maxTokens、API body Game、UI「ゲーム知識」入力欄)
+- [x] personas/default の game_system.md 書き換え + knowledge/sample-game.md 追加
+- [x] ../ai-tuber-potofu の game_system.md 書き換え(**未コミット。ユーザーが commit/push すること**)
+- [x] docs 更新(persona-architecture / architecture / studio-architecture / manual)
+- [x] `dotnet test` 全 327 件パス(2026-07-18)
+- [x] 実機確認: Studio 起動 → UI に「ゲーム知識」欄表示、`POST /api/commentary/start` が
+      `{window, game}` を受理、存在しない知識名は利用可能一覧付き 400(fail fast)を確認
+
+## 完了(2026-07-18)
+
+実装・テスト・ドキュメントすべて完了。残りはユーザー作業のみ:
+
+1. ai-tuber-potofu リポジトリの game_system.md 変更を commit/push
+2. (任意)実況したいゲームの知識ファイルをぽとふリポジトリに追加
+   (`knowledge/<名前>.md`)し、`--game <名前>` で起動して実況の長さ・質を実機確認
+3. 本リポジトリの変更をコミット(エンジン側)
+
+発見した別件(チップとして提案済み): CommentarySessionHost.Start の失敗パスで
+生成済み WGC capture が Dispose されない(既存バグ・今回のスコープ外)。
+
+---
+
+# 追加タスク: README 記載 + マニュアルの GitHub Pages 公開 (2026-07-18)
+
+- [x] README 更新: ゲーム実況の長文化・ゲーム知識 (`--game` / `knowledge/`) の記載、
+      マニュアル Web 版 (https://atoyr.github.io/ai-tuber/) へのリンク追加
+- [x] `docs/_config.yml` + `docs/index.md` 追加(Jekyll。node 不使用の方針どおり)
+- [x] `.github/workflows/pages.yml` 追加(docs/ を actions/jekyll-build-pages で公開。
+      ai-tuber-blogs と同じ「Pages Source = GitHub Actions」方式)
+- [ ] ブランチにコミット → push → PR 作成
+- [ ] Pages を build_type=workflow で有効化(gh api)
+- [ ] PR マージ後に workflow が走り https://atoyr.github.io/ai-tuber/ が公開される(マージはユーザー)
+
+## メモ(再開時に読む)
+
+- 挙動の正解は reference/python_v2 だが、**今回は意図的に Python 版から乖離する**
+  (150 トークン → 500、1〜2文 → 3〜5文)。docs/architecture.md の動作仕様表を更新して正とする
+- potofu ペルソナは sibling の `C:\Users\real-\src\github.com\atoyr\ai-tuber-potofu`(private repo)。
+  エンジン側の変更とは別に、あちらのリポジトリで commit が必要
+- Studio の実況は Live セッションと 409 相互排他(既存仕様のまま)

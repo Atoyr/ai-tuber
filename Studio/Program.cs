@@ -231,7 +231,7 @@ app.MapPost("/api/commentary/start", (CommentaryStartRequest request) =>
     }
     try
     {
-        var status = commentaryHost.Start(request?.Window);
+        var status = commentaryHost.Start(request?.Window, request?.Game);
         notifier?.PublishIfChanged();
         broker.Publish(SseEventMapper.Log(DateTimeOffset.Now, "info", $"ゲーム実況を開始しました (対象: {status.Window})"));
         return Results.Json(new { state = status.State, window = status.Window, startedAt = status.StartedAt }, jsonOptions);
@@ -400,4 +400,5 @@ public sealed record LiveStartRequest(string? Source, string? Target);
 public sealed record CommentRequest(string? Author, string? Text);
 
 /// <summary>POST /api/commentary/start の body。</summary>
-public sealed record CommentaryStartRequest(string? Window);
+/// <summary>Game はペルソナの knowledge/&lt;name&gt;.md を実況コンテキストに使う任意指定。</summary>
+public sealed record CommentaryStartRequest(string? Window, string? Game);

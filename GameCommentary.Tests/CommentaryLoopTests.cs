@@ -28,11 +28,11 @@ public class CommentaryLoopTests : IDisposable
 
     private CommentaryLoop CreateLoop(FakeChatClient client, FakeWindowCapture capture,
                                       FakeSpeaker speaker, int historyLimit = 4,
-                                      Action<string>? log = null)
+                                      Action<string>? log = null, int maxTokens = 500)
     {
         var persona = new Persona(client, PersonaPackage.Load(_promptDir), "game_system.md");
         var filter = new ModerationFilter(BannedWords);
-        return new CommentaryLoop(capture, persona, filter, speaker, historyLimit, "テスト", log);
+        return new CommentaryLoop(capture, persona, filter, speaker, historyLimit, "テスト", log, maxTokens);
     }
 
     [Fact]
@@ -120,6 +120,31 @@ public class CommentaryLoopTests : IDisposable
 
         // 直近4件のみ保持
         Assert.Equal(new[] { "B", "C", "D", "E" }, loop.History);
+    }
+
+    [Fact]
+    public async Task RunOnceAsync_PassesDefaultMaxTokensToClient()
+    {
+        // 実況が単語で途切れないよう、既定の maxTokens は 500 (COMMENTARY_MAX_TOKENS で変更可)
+        var client = new FakeChatClient("長い実況");
+        var loop = new CommentaryLoop(new FakeWindowCapture(),
+            new Persona(client, PersonaPackage.Load(_promptDir), "game_system.md"),
+            new ModerationFilter(BannedWords), new FakeSpeaker());
+
+        await loop.RunOnceAsync();
+
+        Assert.Equal(new[] { 500 }, client.ReceivedMaxTokens);
+    }
+
+    [Fact]
+    public async Task RunOnceAsync_PassesConfiguredMaxTokensToClient()
+    {
+        var client = new FakeChatClient("長い実況");
+        var loop = CreateLoop(client, new FakeWindowCapture(), new FakeSpeaker(), maxTokens: 800);
+
+        await loop.RunOnceAsync();
+
+        Assert.Equal(new[] { 800 }, client.ReceivedMaxTokens);
     }
 
     [Fact]

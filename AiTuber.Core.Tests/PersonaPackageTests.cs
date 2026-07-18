@@ -153,4 +153,86 @@ public class PersonaPackageTests : IDisposable
 
         Assert.Equal("あなたはテストです。\n\n---\n\n配信モードの指示。", prompt);
     }
+
+    // --- knowledge/ (ゲーム知識などの任意ファイル。契約: docs/persona-architecture.md) ---
+
+    private void WriteKnowledge(string name, string content)
+    {
+        string dir = Path.Combine(_personaDir, "knowledge");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, name + ".md"), content);
+    }
+
+    [Fact]
+    public void ListKnowledge_ReturnsEmpty_WhenKnowledgeDirMissing()
+    {
+        var package = PersonaPackage.Load(_personaDir);
+
+        Assert.Empty(package.ListKnowledge());
+    }
+
+    [Fact]
+    public void ListKnowledge_ReturnsNamesWithoutExtensionSorted()
+    {
+        WriteKnowledge("zelda", "ゼルダの知識");
+        WriteKnowledge("minecraft", "マイクラの知識");
+        var package = PersonaPackage.Load(_personaDir);
+
+        Assert.Equal(new[] { "minecraft", "zelda" }, package.ListKnowledge());
+    }
+
+    [Fact]
+    public void LoadKnowledge_ReturnsFileContent()
+    {
+        WriteKnowledge("minecraft", "マイクラの知識。");
+        var package = PersonaPackage.Load(_personaDir);
+
+        Assert.Equal("マイクラの知識。", package.LoadKnowledge("minecraft"));
+    }
+
+    [Fact]
+    public void LoadKnowledge_Throws_WithAvailableList_WhenFileMissing()
+    {
+        WriteKnowledge("minecraft", "マイクラの知識。");
+        var package = PersonaPackage.Load(_personaDir);
+
+        var ex = Assert.Throws<PersonaLoadException>(() => package.LoadKnowledge("zelda"));
+
+        // どの知識が無かったか + 利用可能な一覧を含める (fail fast の UX 方針)
+        Assert.Contains("zelda", ex.Message);
+        Assert.Contains("minecraft", ex.Message);
+    }
+
+    [Fact]
+    public void LoadKnowledge_Throws_WithClearMessage_WhenKnowledgeDirMissing()
+    {
+        var package = PersonaPackage.Load(_personaDir);
+
+        var ex = Assert.Throws<PersonaLoadException>(() => package.LoadKnowledge("minecraft"));
+
+        Assert.Contains("knowledge", ex.Message);
+    }
+
+    [Fact]
+    public void BuildSystemPrompt_AppendsKnowledgeSection()
+    {
+        WriteKnowledge("minecraft", "マイクラの知識。");
+        File.WriteAllText(Path.Combine(_personaDir, "game_system.md"), "実況モードの指示。");
+        var package = PersonaPackage.Load(_personaDir);
+
+        string prompt = package.BuildSystemPrompt("game_system.md", "minecraft");
+
+        Assert.Equal("あなたはテストです。\n\n---\n\n実況モードの指示。\n\n---\n\nマイクラの知識。", prompt);
+    }
+
+    [Fact]
+    public void BuildSystemPrompt_WithoutKnowledge_KeepsLegacyOutput()
+    {
+        WriteKnowledge("minecraft", "マイクラの知識。");
+        var package = PersonaPackage.Load(_personaDir);
+
+        // knowledgeName 未指定 (null) なら従来と同一 (後方互換)
+        Assert.Equal("あなたはテストです。\n\n---\n\n配信モードの指示。",
+                     package.BuildSystemPrompt("live_system.md", null));
+    }
 }
