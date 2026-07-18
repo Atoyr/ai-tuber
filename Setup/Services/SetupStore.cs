@@ -24,6 +24,8 @@ public static class SetupStore
         s.OpenAIApiKey = Env("OPENAI_API_KEY") ?? "";
         s.OpenAIModel = Env("OPENAI_MODEL") ?? s.OpenAIModel;
 
+        s.PersonaDir = Env("PERSONA_DIR") ?? "";
+
         s.VoicevoxUrl = Env("VOICEVOX_URL") ?? s.VoicevoxUrl;
         if (int.TryParse(Env("VOICEVOX_SPEAKER_ID"), out int sid)) s.SpeakerId = sid;
         s.OutputDeviceName = Env("VOICEVOX_OUTPUT_DEVICE") ?? s.OutputDeviceName;
@@ -40,7 +42,7 @@ public static class SetupStore
         return s;
     }
 
-    public sealed record SaveOptions(bool SaveLlm, bool SaveVoicevox, bool SaveApps, bool SaveX);
+    public sealed record SaveOptions(bool SaveLlm, bool SavePersona, bool SaveVoicevox, bool SaveApps, bool SaveX);
 
     public sealed record SaveReport(IReadOnlyList<string> Messages, IReadOnlyList<string> Errors)
     {
@@ -65,6 +67,14 @@ public static class SetupStore
                 SetEnvIfNotEmpty("OPENAI_API_KEY", s.OpenAIApiKey);
                 SetEnv("OPENAI_MODEL", s.OpenAIModel);
                 messages.Add("LLM 設定を保存しました (ユーザー環境変数)");
+            }
+
+            if (opts.SavePersona)
+            {
+                SetEnvIfNotEmpty("PERSONA_DIR", s.PersonaDir);
+                messages.Add(string.IsNullOrWhiteSpace(s.PersonaDir)
+                    ? "PERSONA_DIR は空欄のため変更しませんでした"
+                    : "ペルソナ設定を保存しました (ユーザー環境変数)");
             }
 
             if (opts.SaveVoicevox)
@@ -154,7 +164,7 @@ public static class SetupStore
     }
 
     /// <summary>実行時 CWD から親ディレクトリを辿って .sln があるフォルダを探す。</summary>
-    private static string? FindRepoRoot()
+    internal static string? FindRepoRoot()
     {
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir is not null)

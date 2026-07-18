@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AiTuber.Core\Medoz.AiTuber.Core.csproj" />
     <ProjectReference Include="..\Voicevox\Medoz.Voicevox.csproj" />
   </ItemGroup>
 
