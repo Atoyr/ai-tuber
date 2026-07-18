@@ -95,12 +95,12 @@ maxTokens: COMMENTARY_MAX_TOKENS(既定 500。従来 150 固定)
 
 ## 完了(2026-07-18)
 
-実装・テスト・ドキュメントすべて完了。残りはユーザー作業のみ:
+実装・テスト・ドキュメントすべて完了。
 
-1. ai-tuber-potofu リポジトリの game_system.md 変更を commit/push
-2. (任意)実況したいゲームの知識ファイルをぽとふリポジトリに追加
-   (`knowledge/<名前>.md`)し、`--game <名前>` で起動して実況の長さ・質を実機確認
-3. 本リポジトリの変更をコミット(エンジン側)
+- [x] ai-tuber-potofu リポジトリの game_system.md 変更を commit/push(f01dca5、main へ push 済み)
+- [x] 本リポジトリの変更をコミット(PR #4 のブランチに push 済み)
+- [ ] (任意)実況したいゲームの知識ファイルをぽとふリポジトリに追加
+      (`knowledge/<名前>.md`)し、`--game <名前>` で起動して実況の長さ・質を実機確認
 
 発見した別件(チップとして提案済み): CommentarySessionHost.Start の失敗パスで
 生成済み WGC capture が Dispose されない(既存バグ・今回のスコープ外)。
