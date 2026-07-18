@@ -37,11 +37,20 @@ Claude API を頭脳とする AITuber(AIバーチャル配信者)を動かすた
 ### 3. ゲーム実況(実装済み)
 
 ゲームのウィンドウを 12 秒間隔でキャプチャし、Claude の Vision 機能で画面を認識して
-実況コメントを生成・発話します。
+実況コメントを生成・発話します。実況は 3〜5 文のまとまった話として生成されます
+(生成上限は環境変数 `COMMENTARY_MAX_TOKENS`、既定 500)。
 
 ```
 dotnet run --project GameCommentary -- --window "<ウィンドウタイトルの一部>"
+
+# ペルソナの knowledge/minecraft.md をゲーム知識として実況に反映する
+dotnet run --project GameCommentary -- --window "Minecraft" --game minecraft
 ```
+
+- **ゲーム知識を渡せる**: ペルソナパッケージの `knowledge/<名前>.md` にゲームのルール・用語・
+  実況で触れると良いポイントを書いておくと、`--game <名前>`(または環境変数 `GAME_KNOWLEDGE`、
+  Studio の「ゲーム知識」欄)でその知識を踏まえた実況になります
+- 直近 4 件の実況を文脈として渡し、同じ話の繰り返しを防ぎます
 
 ### 4. ブログ記事の自動投稿(実装済み)
 
@@ -237,6 +246,7 @@ dotnet run --project Live -- --console
 | `tweet_system.md` | 〃 | ツイートモード専用の指示 |
 | `game_system.md` | 〃 | ゲーム実況モード専用の指示 |
 | `blog_system.md` | 〃 | ブログモード専用の指示 |
+| `knowledge/<名前>.md` | 任意 | ゲーム知識(実況で `--game <名前>` / `GAME_KNOWLEDGE` を指定したとき使用) |
 
 - 必須ファイルや起動するモードの md が無い場合は、不足ファイル名を示して起動時にエラーになります
 - 設定の優先順位は「エンジンのデフォルト値 < persona.json < 環境変数」です。
@@ -279,7 +289,14 @@ dotnet test
 
 ## ドキュメント
 
+**Web 版マニュアル(GitHub Pages): https://atoyr.github.io/ai-tuber/**
+
 - 利用者向け運用マニュアル: [docs/manual.md](docs/manual.md)
+  (Web 版: [manual](https://atoyr.github.io/ai-tuber/manual.html))
+- Studio の使い方: [docs/studio-usage.md](docs/studio-usage.md)
 - 設計と動作仕様: [docs/architecture.md](docs/architecture.md)
 - ペルソナ外部化(人格の別リポジトリ管理)の設計: [docs/persona-architecture.md](docs/persona-architecture.md)
 - タスクと進捗: [docs/implementation-plan.md](docs/implementation-plan.md)
+
+Web 版は `docs/` 配下を GitHub Actions(Jekyll)でそのまま公開しています
+(ワークフロー: [.github/workflows/pages.yml](.github/workflows/pages.yml))。

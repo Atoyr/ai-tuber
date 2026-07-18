@@ -1,0 +1,9 @@
+# GitHub Pages (docs/ を Jekyll でそのまま公開する) の設定。
+# ビルドは .github/workflows/pages.yml (actions/jekyll-build-pages)。
+# このリポジトリに node ツールチェーンは増やさない方針のため Jekyll (ビルド不要) を使う。
+# GitHub Pages 既定プラグイン (jekyll-relative-links / jekyll-optional-front-matter /
+# jekyll-default-layout) が有効なので、素の Markdown と相対リンクのままで公開できる。
+title: AITuber ドキュメント
+description: Claude API を頭脳とする AITuber (AIバーチャル配信者) の使い方マニュアルと設計ドキュメント
+lang: ja
+theme: jekyll-theme-cayman
