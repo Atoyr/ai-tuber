@@ -77,8 +77,11 @@
 - [x] `BlogBot/` — 生成 → JSONパース → 検証(タイトル40字・本文200〜2000字・フィルタ・重複)→ 最大3回再生成
 - [x] `IBlogPublisher` — `DryRunBlogPublisher`(デフォルト)/ `GitBlogPublisher`(BLOG_DRY_RUN=0 で commit & push)
 - [x] ユニットテスト
-- [ ] ai-tuber-blogs を main に push し、Settings → Pages → Source を「GitHub Actions」に設定(手動)
-- [ ] 実機テスト: `BLOG_DRY_RUN=0` で記事が公開されることを確認
+- [x] ai-tuber-blogs を main に push し、Settings → Pages → Source を「GitHub Actions」に設定(手動)
+- [x] 実機テスト: `BLOG_DRY_RUN=0` で記事が公開されることを確認
+- [x] Claude Code スキル `/blog`(`.claude/skills/blog/SKILL.md`)— 壁打ちで記事を執筆し、
+      **ユーザーが承認した記事だけ** ai-tuber-blogs に commit & push(記事フォーマット・検証は BlogBot と同じ契約。
+      公開後は memory.json の `recent_posts` にも記録して BlogBot と重複回避を共有)
 - 完了条件: `dotnet run --project BlogBot` (dry-run) で記事 markdown が出力され、本番化すると
   https://atoyr.github.io/ai-tuber-blogs/ に記事が載る
 
