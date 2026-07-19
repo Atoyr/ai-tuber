@@ -19,6 +19,7 @@ public class CommentaryLoop
     private readonly string _displayName;
     private readonly Action<string> _log;
     private readonly int _maxTokens;
+    private readonly Action<string>? _onSpeaking;
     private readonly List<string> _history = new();
 
     // Vision に渡す画像のメディアタイプ (WindowCapture は JPEG を返す)
@@ -35,9 +36,15 @@ public class CommentaryLoop
     /// Studio はここから SSE へ流す。
     /// </param>
     /// <param name="maxTokens">実況1回の生成 maxTokens (AppConfig.CommentaryMaxTokens を渡す)。</param>
+    /// <param name="onSpeaking">
+    /// 発話開始直前に実況文を受け取るコールバック。省略時は Console.WriteLine (CLI の従来挙動)。
+    /// Studio は必ず注入すること: コンソール出力はウィンドウのテキスト選択 (QuickEdit で1クリック
+    /// するだけで入る) 中ブロックされるため、既定のままだと実況ループごと凍結して発話が止まる。
+    /// </param>
     public CommentaryLoop(IWindowCapture capture, Persona persona, ModerationFilter filter,
                           ISpeaker speaker, int historyLimit = 4, string displayName = "ぷる乃",
-                          Action<string>? log = null, int maxTokens = DefaultMaxTokens)
+                          Action<string>? log = null, int maxTokens = DefaultMaxTokens,
+                          Action<string>? onSpeaking = null)
     {
         _capture = capture ?? throw new ArgumentNullException(nameof(capture));
         _persona = persona ?? throw new ArgumentNullException(nameof(persona));
@@ -47,6 +54,7 @@ public class CommentaryLoop
         _displayName = displayName;
         _log = log ?? Console.WriteLine;
         _maxTokens = maxTokens;
+        _onSpeaking = onSpeaking;
     }
 
     /// <summary>直近の実況履歴 (最大 historyLimit 件)。</summary>
@@ -93,7 +101,14 @@ public class CommentaryLoop
             _history.RemoveRange(0, _history.Count - _historyLimit);
         }
 
-        Console.WriteLine($"{_displayName}: {comment}");
+        if (_onSpeaking is not null)
+        {
+            _onSpeaking(comment);
+        }
+        else
+        {
+            Console.WriteLine($"{_displayName}: {comment}");
+        }
 
         try
         {

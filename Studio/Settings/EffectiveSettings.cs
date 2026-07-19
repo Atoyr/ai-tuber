@@ -1,4 +1,5 @@
 using Medoz.AiTuber.Core;
+using Medoz.Studio.Commentary;
 
 namespace Medoz.Studio.Settings;
 
@@ -15,6 +16,11 @@ public sealed record EffectiveSettings
     public required int SpeakerId { get; init; }
     public required bool Paused { get; init; }
     public required IReadOnlyDictionary<string, int> EmotionStyleIds { get; init; }
+
+    // 即時反映 (ゲーム実況。実行中ループが待ち時間の計算ごとに読み直す)
+    public required double CaptureIntervalSec { get; init; }
+    public required string CommentaryTimingMode { get; init; }
+    public required double CommentaryAfterSpeechSec { get; init; }
 
     // 次回セッションから
     public required string Source { get; init; }
@@ -49,6 +55,10 @@ public static class SettingsMerger
             SpeakerId = o?.SpeakerId ?? baseConfig.SpeakerId,
             Paused = o?.Paused ?? false,
             EmotionStyleIds = baseConfig.EmotionStyleIds,
+            CaptureIntervalSec = o?.CaptureIntervalSec ?? baseConfig.CaptureIntervalSec,
+            // TimingMode / AfterSpeechSec は Studio 固有 (AppConfig に無い) のでここが既定。
+            CommentaryTimingMode = CommentaryTiming.Normalize(o?.CommentaryTimingMode),
+            CommentaryAfterSpeechSec = o?.CommentaryAfterSpeechSec ?? CommentaryTiming.DefaultAfterSpeechSec,
             Source = o?.Source ?? DefaultSource,
             Target = o?.Target ?? "",
             OutputDevice = o?.OutputDevice ?? baseConfig.OutputDeviceName,

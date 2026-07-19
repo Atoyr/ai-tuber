@@ -282,6 +282,9 @@ app.MapGet("/api/settings", () =>
             freetalkEnabled = effective.FreetalkEnabled,
             speakerId = effective.SpeakerId,
             paused = effective.Paused,
+            captureIntervalSec = effective.CaptureIntervalSec,
+            commentaryTimingMode = effective.CommentaryTimingMode,
+            commentaryAfterSpeechSec = effective.CommentaryAfterSpeechSec,
         },
         nextSession = new
         {
@@ -313,6 +316,11 @@ app.MapPut("/api/settings", (SettingsPatch patch) =>
             if (im.FreetalkEnabled is bool enabled) { data.FreetalkEnabled = enabled; }
             if (im.SpeakerId is int speakerId) { data.SpeakerId = speakerId; }
             if (im.Paused is bool paused) { data.Paused = paused; }
+            // 実況の間隔設定。実行中の実況ループは待ち時間の計算ごとに studio.json を読み直すため
+            // ApplyImmediate のような push は不要 (保存だけで次の待ちから反映される)
+            if (im.CaptureIntervalSec is double captureInterval) { data.CaptureIntervalSec = captureInterval; }
+            if (im.CommentaryTimingMode is not null) { data.CommentaryTimingMode = CommentaryTiming.Normalize(im.CommentaryTimingMode); }
+            if (im.CommentaryAfterSpeechSec is double afterSpeech) { data.CommentaryAfterSpeechSec = afterSpeech; }
         }
         if (patch.NextSession is { } next)
         {

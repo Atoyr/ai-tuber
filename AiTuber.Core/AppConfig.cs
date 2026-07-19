@@ -187,6 +187,7 @@ public record AppConfig
             YouTubeApiKey = Env("YOUTUBE_API_KEY", ""),
             GameWindowTitle = Env("WINDOW_TITLE_FRAGMENT", ""),
             CaptureMethod = Env("CAPTURE_METHOD", "wgc"),
+            CaptureIntervalSec = EnvInt("CAPTURE_INTERVAL_SEC", 12),
             CommentaryMaxTokens = EnvInt("COMMENTARY_MAX_TOKENS", 500),
             GameKnowledge = Env("GAME_KNOWLEDGE", ""),
             XApiKey = Env("X_API_KEY", ""),
