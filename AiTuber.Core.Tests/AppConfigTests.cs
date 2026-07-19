@@ -62,16 +62,19 @@ public class AppConfigTests
         {
             Environment.SetEnvironmentVariable("COMMENTARY_MAX_TOKENS", "800");
             Environment.SetEnvironmentVariable("GAME_KNOWLEDGE", "minecraft");
+            Environment.SetEnvironmentVariable("CAPTURE_INTERVAL_SEC", "20");
 
             var config = AppConfig.LoadFromEnvironment();
 
             Assert.Equal(800, config.CommentaryMaxTokens);
             Assert.Equal("minecraft", config.GameKnowledge);
+            Assert.Equal(20, config.CaptureIntervalSec);
         }
         finally
         {
             Environment.SetEnvironmentVariable("COMMENTARY_MAX_TOKENS", null);
             Environment.SetEnvironmentVariable("GAME_KNOWLEDGE", null);
+            Environment.SetEnvironmentVariable("CAPTURE_INTERVAL_SEC", null);
         }
     }
 

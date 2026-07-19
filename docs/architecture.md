@@ -75,7 +75,7 @@ streaming は Anthropic の SSE (`"stream": true`) を `IAsyncEnumerable<string>
 | ツイート検証 | 140字以内・フィルタ・完全重複チェック | 失敗したら再生成、最大3回でスキップ |
 | RECENT_TWEETS_KEEP | 20 | 重複回避のため記憶する直近ツイート数 |
 | フィルタ違反時(Live) | 応答を破棄し、そのターンの履歴も破棄 | ログに出して次へ |
-| CAPTURE_INTERVAL_SEC | 12 | ゲーム実況のキャプチャ間隔 |
+| CAPTURE_INTERVAL_SEC | 12 | ゲーム実況のキャプチャ間隔(秒)。環境変数で変更可。Studio からは間隔方式(一定間隔 / 発話終了から N 秒)と合わせて実行中に変更できる(studio-architecture.md 参照) |
 | 画像リサイズ | 幅800px, JPEG q80 | トークン節約 |
 | 実況履歴 | 直近4件を文脈として渡す | 繰り返し防止 |
 | COMMENTARY_MAX_TOKENS | 500 | 実況1回の生成 maxTokens。**Python版の150から意図的に変更**(日本語実況が単語レベルで途切れるため。プロンプトも1〜2文→3〜5文に変更済み) |

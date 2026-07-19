@@ -25,7 +25,8 @@ public sealed record CommentaryStatus(string State, string? Window, DateTimeOffs
 /// <summary>
 /// Studio 内でゲーム実況セッション (GameCommentary の CommentaryLoop) を管理するサービス。
 /// - start: 実効設定 → PersonaPackage (game_system.md) / LLM / WindowCapture / VOICEVOX を構築し、
-///   CAPTURE_INTERVAL_SEC 間隔のキャプチャ→Vision実況→発話ループをバックグラウンド実行
+///   キャプチャ→Vision実況→発話ループをバックグラウンド実行。間隔は UI 設定
+///   (captureIntervalSec / commentaryTimingMode / commentaryAfterSpeechSec) を毎回読み直して即時反映
 /// - stop: キャンセル → ループ完了待ち → 後始末
 /// 起動失敗 (ウィンドウ未発見・APIキー未設定・デバイス無し等) は例外メッセージをそのまま返す
 /// (LiveSessionHost と同じ fail fast の UX。ウィンドウ未発見時は候補一覧がメッセージに含まれる)。
@@ -166,7 +167,10 @@ public sealed class CommentarySessionHost : IAsyncDisposable
                     DateTimeOffset.Now,
                     message.StartsWith("[error]", StringComparison.Ordinal) ? "error" : "info",
                     message)),
-                maxTokens: config.CommentaryMaxTokens);
+                maxTokens: config.CommentaryMaxTokens,
+                // 発話テキストは SSE へ (発話開始時点で会話ログに出る)。既定の Console.WriteLine のままだと
+                // Studio のコンソールをクリックしてテキスト選択に入った瞬間ループが凍結し発話が止まる
+                onSpeaking: text => _onEvent(new CommentarySpoken(DateTimeOffset.Now, text)));
 
             var cts = new CancellationTokenSource();
             _cts = cts;
@@ -175,15 +179,18 @@ public sealed class CommentarySessionHost : IAsyncDisposable
             _window = capture.TargetTitle;
             _startedAt = DateTimeOffset.Now;
             _faulted = false;
-            _runTask = Task.Run(() => RunLoopAsync(loop, config.CaptureIntervalSec, cts.Token));
+            _runTask = Task.Run(() => RunLoopAsync(loop, config, cts.Token));
 
             _onEvent(new CommentaryStateChanged(DateTimeOffset.Now, "Running"));
             return new CommentaryStatus("Running", _window, _startedAt);
         }
     }
 
-    /// <summary>CAPTURE_INTERVAL_SEC 間隔で実況を回す (実処理時間を差し引く。CLI と同じ)。</summary>
-    private async Task RunLoopAsync(CommentaryLoop loop, int intervalSec, CancellationToken ct)
+    /// <summary>
+    /// 実況を回すループ。待ち時間は毎回 studio.json を読み直して計算するため、
+    /// キャプチャ間隔・方式 (interval / afterSpeech) の UI 変更が次の待ちから即時反映される。
+    /// </summary>
+    private async Task RunLoopAsync(CommentaryLoop loop, AppConfig config, CancellationToken ct)
     {
         try
         {
@@ -191,14 +198,14 @@ public sealed class CommentarySessionHost : IAsyncDisposable
             {
                 var start = DateTime.UtcNow;
 
-                string? comment = await loop.RunOnceAsync(ct);
-                if (comment is not null)
-                {
-                    _onEvent(new CommentarySpoken(DateTimeOffset.Now, comment));
-                }
+                // 発話テキストの SSE 通知は CommentaryLoop の onSpeaking (発話開始時) が行う
+                await loop.RunOnceAsync(ct);
 
                 double elapsed = (DateTime.UtcNow - start).TotalSeconds;
-                double wait = Math.Max(0, intervalSec - elapsed);
+                var effective = SettingsMerger.Merge(config, _settings.Current());
+                double wait = CommentaryTiming.NextWaitSec(
+                    effective.CommentaryTimingMode, effective.CaptureIntervalSec,
+                    effective.CommentaryAfterSpeechSec, elapsed);
                 if (wait > 0)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(wait), ct);

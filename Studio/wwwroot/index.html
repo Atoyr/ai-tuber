@@ -126,6 +126,23 @@
         <input type="checkbox" id="setting-paused">
       </div>
 
+      <h3 class="settings-group-title">実況 <span class="tag-immediate">即時反映</span></h3>
+      <div class="field-row">
+        <label for="setting-commentary-timing-mode">間隔の方式</label>
+        <select id="setting-commentary-timing-mode">
+          <option value="interval">一定間隔 (キャプチャ開始から)</option>
+          <option value="afterSpeech">発話が終わってから</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label for="setting-capture-interval-sec">キャプチャ間隔(秒)</label>
+        <input type="number" id="setting-capture-interval-sec" min="1" step="1">
+      </div>
+      <div class="field-row">
+        <label for="setting-commentary-after-speech-sec">発話終了後の秒数</label>
+        <input type="number" id="setting-commentary-after-speech-sec" min="0" step="1">
+      </div>
+
       <h3 class="settings-group-title">次回セッションから <span class="tag-next">次回セッションから</span></h3>
       <div class="field-row">
         <label for="setting-output-device">出力デバイス</label>

@@ -106,6 +106,38 @@ public class CommentaryLoopTests : IDisposable
     }
 
     [Fact]
+    public async Task RunOnceAsync_NotifiesOnSpeakingInsteadOfConsole()
+    {
+        // Studio 用: onSpeaking を注入すると発話テキストがコンソールではなくコールバックに届く
+        // (コンソール出力はテキスト選択中にブロックされ、実況ループごと凍結して発話が止まるため)
+        var spoken = new List<string>();
+        var client = new FakeChatClient("敵が出てきたよ!");
+        var loop = new CommentaryLoop(new FakeWindowCapture(),
+            new Persona(client, PersonaPackage.Load(_promptDir), "game_system.md"),
+            new ModerationFilter(BannedWords), new FakeSpeaker(),
+            onSpeaking: spoken.Add);
+
+        await loop.RunOnceAsync();
+
+        Assert.Equal(new[] { "敵が出てきたよ!" }, spoken);
+    }
+
+    [Fact]
+    public async Task RunOnceAsync_DoesNotNotifyOnSpeakingWhenFiltered()
+    {
+        var spoken = new List<string>();
+        var client = new FakeChatClient("@メンションだよ"); // "@" は禁止ワード
+        var loop = new CommentaryLoop(new FakeWindowCapture(),
+            new Persona(client, PersonaPackage.Load(_promptDir), "game_system.md"),
+            new ModerationFilter(BannedWords), new FakeSpeaker(),
+            onSpeaking: spoken.Add);
+
+        await loop.RunOnceAsync();
+
+        Assert.Empty(spoken);
+    }
+
+    [Fact]
     public async Task RunOnceAsync_KeepsHistoryToLimit()
     {
         var client = new FakeChatClient("A", "B", "C", "D", "E");

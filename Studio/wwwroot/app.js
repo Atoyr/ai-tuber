@@ -377,7 +377,19 @@ const settingInputs = {
   freetalkEnabled: qs("setting-freetalk-enabled"),
   speakerId: qs("setting-speaker-id"),
   paused: qs("setting-paused"),
+  commentaryTimingMode: qs("setting-commentary-timing-mode"),
+  captureIntervalSec: qs("setting-capture-interval-sec"),
+  commentaryAfterSpeechSec: qs("setting-commentary-after-speech-sec"),
 };
+
+/* 実況の間隔方式に応じて、使われない方の秒数入力を無効化して分かりやすくする */
+function updateCommentaryTimingInputs() {
+  const afterSpeech = settingInputs.commentaryTimingMode.value === "afterSpeech";
+  settingInputs.captureIntervalSec.disabled = afterSpeech;
+  settingInputs.commentaryAfterSpeechSec.disabled = !afterSpeech;
+}
+settingInputs.commentaryTimingMode.addEventListener("change", updateCommentaryTimingInputs);
+updateCommentaryTimingInputs();
 
 const nextSessionInputs = {
   outputDevice: qs("setting-output-device"),
@@ -454,6 +466,7 @@ async function loadSettings() {
     for (const [key, wired] of Object.entries(wiredImmediate)) {
       if (key in immediate) wired.setKnownValue(immediate[key]);
     }
+    updateCommentaryTimingInputs();
   }
   if (nextSession) {
     // outputDevice はデバイス一覧ロード後に反映するため保持しておく

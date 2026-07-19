@@ -31,6 +31,9 @@ public class SettingsMergerTests
         Assert.True(effective.FreetalkEnabled);
         Assert.Equal(3, effective.SpeakerId);
         Assert.False(effective.Paused);
+        Assert.Equal(12, effective.CaptureIntervalSec);       // AppConfig の既定 (CAPTURE_INTERVAL_SEC)
+        Assert.Equal("interval", effective.CommentaryTimingMode); // Studio 固有: 既定は従来挙動
+        Assert.Equal(5, effective.CommentaryAfterSpeechSec);
         Assert.Equal("manual", effective.Source);
         Assert.Equal("CABLE Input", effective.OutputDevice);
         Assert.Equal("claude", effective.LlmProvider);
@@ -68,6 +71,9 @@ public class SettingsMergerTests
             FreetalkEnabled = false,
             SpeakerId = 1,
             Paused = true,
+            CaptureIntervalSec = 30,
+            CommentaryTimingMode = "afterSpeech",
+            CommentaryAfterSpeechSec = 8,
             Source = "twitch",
             Target = "somechannel",
             OutputDevice = "VoiceMeeter",
@@ -83,6 +89,9 @@ public class SettingsMergerTests
         Assert.False(effective.FreetalkEnabled);
         Assert.Equal(1, effective.SpeakerId);
         Assert.True(effective.Paused);
+        Assert.Equal(30, effective.CaptureIntervalSec);
+        Assert.Equal("afterSpeech", effective.CommentaryTimingMode);
+        Assert.Equal(8, effective.CommentaryAfterSpeechSec);
         Assert.Equal("twitch", effective.Source);
         Assert.Equal("somechannel", effective.Target);
         Assert.Equal("VoiceMeeter", effective.OutputDevice);

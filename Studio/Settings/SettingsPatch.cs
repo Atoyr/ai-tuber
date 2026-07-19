@@ -29,6 +29,15 @@ public sealed class ImmediatePatch
 
     [JsonPropertyName("paused")]
     public bool? Paused { get; set; }
+
+    [JsonPropertyName("captureIntervalSec")]
+    public double? CaptureIntervalSec { get; set; }
+
+    [JsonPropertyName("commentaryTimingMode")]
+    public string? CommentaryTimingMode { get; set; }
+
+    [JsonPropertyName("commentaryAfterSpeechSec")]
+    public double? CommentaryAfterSpeechSec { get; set; }
 }
 
 /// <summary>次回セッショングループの部分更新。null のフィールドは未変更。</summary>

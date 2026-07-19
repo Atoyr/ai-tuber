@@ -25,6 +25,16 @@ public sealed class StudioSettingsData
     [JsonPropertyName("paused")]
     public bool? Paused { get; set; }
 
+    // --- 即時反映 (ゲーム実況。次の待ち時間の計算から反映される) ---
+    [JsonPropertyName("captureIntervalSec")]
+    public double? CaptureIntervalSec { get; set; }
+
+    [JsonPropertyName("commentaryTimingMode")]
+    public string? CommentaryTimingMode { get; set; }
+
+    [JsonPropertyName("commentaryAfterSpeechSec")]
+    public double? CommentaryAfterSpeechSec { get; set; }
+
     // --- 次回セッションから反映 ---
     [JsonPropertyName("source")]
     public string? Source { get; set; }
@@ -51,6 +61,9 @@ public sealed class StudioSettingsData
         FreetalkEnabled = FreetalkEnabled,
         SpeakerId = SpeakerId,
         Paused = Paused,
+        CaptureIntervalSec = CaptureIntervalSec,
+        CommentaryTimingMode = CommentaryTimingMode,
+        CommentaryAfterSpeechSec = CommentaryAfterSpeechSec,
         Source = Source,
         Target = Target,
         OutputDevice = OutputDevice,
