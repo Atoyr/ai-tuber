@@ -281,6 +281,21 @@ purupuruStopBtn.addEventListener("click", async () => {
   refreshStatus();
 });
 
+/* 配信画面 (OBS ブラウザソース用) の URL をクリップボードへ */
+const overlayCopyBtn = qs("overlay-copy-btn");
+overlayCopyBtn.addEventListener("click", async () => {
+  const url = new URL("/overlay", location.origin).toString();
+  try {
+    await navigator.clipboard.writeText(url);
+    overlayCopyBtn.textContent = "コピーしました";
+  } catch (_) {
+    overlayCopyBtn.textContent = url; // クリップボードが使えない場合は URL を出す
+  }
+  setTimeout(() => {
+    overlayCopyBtn.textContent = "URLをコピー";
+  }, 2000);
+});
+
 /* ==========================================================================
  * 配信パネル
  * ========================================================================== */

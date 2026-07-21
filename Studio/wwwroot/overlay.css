@@ -1,0 +1,178 @@
+/* ==========================================================================
+ * AITuber Studio - 配信画面 (OBS ブラウザソース用オーバーレイ)
+ * 1920x1080 のステージを組み、ソースサイズに合わせて JS で scale する。
+ * 背景は完全透過 (OBS 側でゲーム画面や背景を下に敷く前提)。
+ * ========================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  /* 配信画面なのでマウス操作は一切受け付けない (OBS の操作を邪魔しない) */
+  pointer-events: none;
+  user-select: none;
+  font-family: "Yu Gothic UI", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  color: #fff;
+}
+
+/* 1920x1080 固定のステージ。JS が --scale を入れて中央に収める */
+.stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1920px;
+  height: 1080px;
+  transform: translate(-50%, -50%) scale(var(--scale, 1));
+  transform-origin: center center;
+}
+
+/* ---------- アバター (PuruPuru OBS モードの iframe) ---------- */
+
+.avatar {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.avatar[hidden] {
+  display: none;
+}
+
+/* ---------- コメント一覧 ---------- */
+
+.comments {
+  position: absolute;
+  top: 72px;
+  bottom: 260px;
+  width: 560px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.comments.side-left {
+  left: 64px;
+}
+
+.comments.side-right {
+  right: 64px;
+}
+
+.comments[hidden] {
+  display: none;
+}
+
+.comment {
+  padding: 14px 20px;
+  border-radius: 18px;
+  background: rgba(18, 20, 34, 0.72);
+  border-left: 6px solid #6ea8ff;
+  backdrop-filter: blur(2px);
+  animation: comment-in 260ms ease-out;
+}
+
+.comment.leaving {
+  animation: comment-out 400ms ease-in forwards;
+}
+
+.comment-author {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: #8fc0ff;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comment-text {
+  display: block;
+  font-size: 30px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+@keyframes comment-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes comment-out {
+  to {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+/* ---------- 字幕 (発話テキスト) ---------- */
+
+.subtitle {
+  position: absolute;
+  /* transform は登場アニメーションで使うため、中央寄せは margin: auto で行う
+     (translateX(-50%) だとキーフレームの transform に上書きされて左右がずれる) */
+  left: 0;
+  right: 0;
+  bottom: 72px;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: 1500px;
+  padding: 24px 44px;
+  border-radius: 28px;
+  background: rgba(18, 20, 34, 0.78);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 220ms ease-out;
+}
+
+.subtitle[hidden] {
+  display: none;
+}
+
+.subtitle.visible {
+  opacity: 1;
+  animation: subtitle-in 220ms ease-out;
+}
+
+.subtitle-text {
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  /* 背景が何色でも読めるように縁取りする */
+  paint-order: stroke fill;
+  -webkit-text-stroke: 5px rgba(10, 12, 24, 0.9);
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.55);
+  word-break: break-word;
+}
+
+@keyframes subtitle-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

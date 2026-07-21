@@ -50,6 +50,51 @@ public class EventBrokerTests
     }
 
     [Fact]
+    public async Task replay_false_なら過去ログを受け取らず新着だけ流れる()
+    {
+        // 配信画面 (overlay) は /api/events?replay=0 で購読する。
+        // 接続時点までの発話が画面に一気に出ないことを保証する。
+        var broker = new EventBroker();
+        broker.Publish(Ev(1));
+        broker.Publish(Ev(2));
+
+        using var cts = new CancellationTokenSource();
+        var received = new List<SseEvent>();
+        var subscribeTask = Task.Run(async () =>
+        {
+            await foreach (var sseEvent in broker.SubscribeAsync(cts.Token, replay: false))
+            {
+                lock (received)
+                {
+                    received.Add(sseEvent);
+                }
+                cts.Cancel();
+            }
+        });
+
+        // 購読登録が済むまで新着を送り続ける (リプレイが無いので受信で登録完了を待てない)
+        for (int i = 0; i < 200; i++)
+        {
+            broker.Publish(Ev(3));
+            lock (received)
+            {
+                if (received.Count > 0)
+                {
+                    break;
+                }
+            }
+            await Task.Delay(10);
+        }
+        await subscribeTask;
+
+        lock (received)
+        {
+            Assert.NotEmpty(received);
+            Assert.All(received, e => Assert.Equal(Ev(3), e)); // Ev(1)/Ev(2) は届かない
+        }
+    }
+
+    [Fact]
     public async Task リプレイ後の新着イベントも受け取れる()
     {
         var broker = new EventBroker();

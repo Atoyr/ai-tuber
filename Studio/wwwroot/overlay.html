@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>配信画面 (OBS) - AITuber Studio</title>
+<link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+<!--
+  OBS のブラウザソース用の配信画面。1920x1080 を基準に組み、ソースサイズに合わせて縮小する。
+  URL クエリ: avatar=0 / comments=0 / subtitle=0 で各レイヤを消す、side=left|right でコメント位置、
+  avatarUrl=<URL> でアバターの埋め込み先を上書き。
+-->
+<div class="stage" id="stage">
+  <!-- アバター (PuruPuruPNGTuber の OBS モード。透過・全面) -->
+  <iframe class="avatar" id="avatar" title="アバター" allow="microphone; autoplay" hidden></iframe>
+
+  <!-- コメント一覧 -->
+  <div class="comments" id="comments"></div>
+
+  <!-- 字幕 (発話テキスト) -->
+  <div class="subtitle" id="subtitle" hidden><span class="subtitle-text" id="subtitle-text"></span></div>
+</div>
+
+<script src="overlay.js"></script>
+</body>
+</html>
