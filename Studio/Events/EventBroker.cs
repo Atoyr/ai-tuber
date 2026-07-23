@@ -62,22 +62,27 @@ public sealed class EventBroker
     /// <summary>
     /// 購読を開始する。まずバッファ内容をリプレイし、その後の新着を ct キャンセルまで流し続ける。
     /// </summary>
+    /// <param name="replay">
+    /// false にするとリプレイを行わず、購読開始後の新着だけを流す。
+    /// 配信画面 (overlay) のように「過去ログを画面に出したくない」購読者向け。
+    /// </param>
     public async IAsyncEnumerable<SseEvent> SubscribeAsync(
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct,
+        bool replay = true)
     {
         var channel = Channel.CreateUnbounded<SseEvent>();
-        SseEvent[] replay;
+        SseEvent[] replayed;
         lock (_lock)
         {
-            replay = _buffer.ToArray();
+            replayed = replay ? _buffer.ToArray() : [];
             _subscribers.Add(channel);
         }
 
         try
         {
-            foreach (var replayed in replay)
+            foreach (var buffered in replayed)
             {
-                yield return replayed;
+                yield return buffered;
             }
             while (true)
             {

@@ -354,16 +354,32 @@ app.MapGet("/api/devices", () =>
     }
 });
 
-// --- SSE (直近200件リプレイ + 追記配信) ---
+// --- 配信画面 (OBS ブラウザソース用オーバーレイ) ---
+// http://127.0.0.1:5100/overlay を OBS のブラウザソースに指定する。
+// アバターは PuruPuruPNGTuber の OBS モード (mode=obs&transparent=1) を iframe で埋め込む。
+app.MapGet("/overlay", () =>
+    Results.File(Path.Combine(app.Environment.WebRootPath, "overlay.html"), "text/html; charset=utf-8"));
+
+app.MapGet("/api/overlay/config", () =>
+{
+    // PuruPuru の OBS モード URL。control ページの「OBS用URL」と同じ形式にする
+    string avatarUrl = $"{launcher.PurupuruUrl}/?mode=obs&transparent=1";
+    return Results.Json(new { avatarUrl, overlayUrl = $"{listenUrl}/overlay" }, jsonOptions);
+});
+
+// --- SSE (直近200件リプレイ + 追記配信。?replay=0 でリプレイ無し) ---
 app.MapGet("/api/events", async (HttpContext context) =>
 {
     context.Response.Headers.ContentType = "text/event-stream";
     context.Response.Headers.CacheControl = "no-cache";
     context.Response.Headers.Connection = "keep-alive";
 
+    // 配信画面は過去ログを画面に出したくないので replay=0 で接続する
+    bool replay = context.Request.Query["replay"] != "0";
+
     try
     {
-        await foreach (var sseEvent in broker.SubscribeAsync(context.RequestAborted))
+        await foreach (var sseEvent in broker.SubscribeAsync(context.RequestAborted, replay))
         {
             await context.Response.WriteAsync(sseEvent.ToWireFormat(), context.RequestAborted);
             await context.Response.Body.FlushAsync(context.RequestAborted);
